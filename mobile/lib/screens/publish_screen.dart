@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/articles_provider.dart';
 import '../providers/auth_provider.dart';
 import '../models/article.dart';
@@ -117,6 +118,18 @@ class _PublishScreenState extends ConsumerState<PublishScreen> {
         const SizedBox(height: 8),
         Text(_published!.devtoUrl ?? '', textAlign: TextAlign.center, style: const TextStyle(color: Colors.blue)),
         const SizedBox(height: 24),
+        OutlinedButton.icon(
+          onPressed: () async {
+            final url = _published!.devtoUrl ?? '';
+            final uri = Uri.tryParse(url);
+            if (uri != null && await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            }
+          },
+          icon: const Icon(Icons.open_in_browser),
+          label: const Text('Open in Browser'),
+        ),
+        const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () {
             Clipboard.setData(ClipboardData(text: _published!.devtoUrl ?? ''));
