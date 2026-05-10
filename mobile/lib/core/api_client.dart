@@ -3,7 +3,13 @@ import 'package:http/http.dart' as http;
 import 'secure_storage.dart';
 
 class ApiClient {
-  static const String baseUrl = 'http://localhost:3000/api';
+  // Override at build time: flutter run --dart-define=API_BASE_URL=http://YOUR_IP:3000/api
+  // Android emulator default: http://10.0.2.2:3000/api
+  // iOS simulator default:    http://localhost:3000/api
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:3000/api',
+  );
 
   static Future<Map<String, String>> _headers() async {
     final token = await SecureStorage.getToken();
