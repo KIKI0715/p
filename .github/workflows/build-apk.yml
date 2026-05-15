@@ -5,6 +5,9 @@ on:
     branches: [ claude/ai-blog-automation-NkYJ3, main ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -25,6 +28,33 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Generate placeholder app icons
+        run: |
+          python3 - <<'EOF'
+          import struct, zlib, os
+
+          def make_png(size, color=(103, 80, 164)):
+              def chunk(name, data):
+                  c = struct.pack('>I', len(data)) + name + data
+                  return c + struct.pack('>I', zlib.crc32(name + data) & 0xffffffff)
+              raw = b''.join(b'\x00' + bytes(list(color) * size) for _ in range(size))
+              return (b'\x89PNG\r\n\x1a\n'
+                      + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0))
+                      + chunk(b'IDAT', zlib.compress(raw))
+                      + chunk(b'IEND', b''))
+
+          for dirname, size in [('mipmap-mdpi', 48), ('mipmap-hdpi', 72),
+                                  ('mipmap-xhdpi', 96), ('mipmap-xxhdpi', 144),
+                                  ('mipmap-xxxhdpi', 192)]:
+              path = f'mobile/android/app/src/main/res/{dirname}'
+              os.makedirs(path, exist_ok=True)
+              data = make_png(size)
+              for name in ['ic_launcher.png', 'ic_launcher_round.png']:
+                  with open(f'{path}/{name}', 'wb') as f:
+                      f.write(data)
+          print("App icons generated")
+          EOF
+
       - name: Install dependencies
         working-directory: mobile
         run: flutter pub get
@@ -33,17 +63,20 @@ jobs:
         working-directory: mobile
         run: flutter build apk --debug --target-platform android-arm64
 
+      - name: Find APK
+        run: find mobile/build -name "app-debug.apk" 2>/dev/null || echo "APK not found"
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: ai-blog-debug-apk
-          path: mobile/build/outputs/flutter-apk/app-debug.apk
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
           retention-days: 7
 
       - name: Save APK to releases/
         run: |
           mkdir -p releases
-          cp mobile/build/outputs/flutter-apk/app-debug.apk releases/ai_blog_debug.apk
+          cp mobile/build/app/outputs/flutter-apk/app-debug.apk releases/ai_blog_debug.apk
 
       - name: Commit APK
         run: |
@@ -51,4 +84,4 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add releases/ai_blog_debug.apk
           git diff --staged --quiet || git commit -m "ci: update debug APK from GitHub Actions build"
-          git push
+          git push origin HEAD
