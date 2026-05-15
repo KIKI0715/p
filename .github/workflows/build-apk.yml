@@ -28,6 +28,9 @@ jobs:
           channel: stable
           cache: true
 
+      - name: Flutter doctor (diagnostic)
+        run: flutter doctor -v
+
       - name: Generate placeholder app icons
         run: |
           python3 - <<'EOF'
@@ -54,17 +57,46 @@ jobs:
                       f.write(data)
           print("App icons generated")
           EOF
+          ls -la mobile/android/app/src/main/res/
 
       - name: Install dependencies
         working-directory: mobile
-        run: flutter pub get
+        run: flutter pub get 2>&1 | tee pub-get.log
 
-      - name: Build debug APK
+      - name: Build debug APK (verbose)
+        id: build
         working-directory: mobile
-        run: flutter build apk --debug --target-platform android-arm64
+        run: |
+          set -o pipefail
+          flutter build apk --debug --target-platform android-arm64 --verbose 2>&1 | tee build.log
+        continue-on-error: true
 
-      - name: Find APK
-        run: find mobile/build -name "app-debug.apk" 2>/dev/null || echo "APK not found"
+      - name: Show APK location
+        if: always()
+        working-directory: mobile
+        run: |
+          echo "=== Searching for APK files ==="
+          find build -name "*.apk" 2>/dev/null || echo "No APK found"
+          echo "=== build/ tree ==="
+          find build -type d 2>/dev/null | head -50 || echo "No build dir"
+
+      - name: Upload build logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-logs
+          path: |
+            mobile/pub-get.log
+            mobile/build.log
+          retention-days: 7
+          if-no-files-found: warn
+
+      - name: Fail if build failed
+        if: steps.build.outcome == 'failure'
+        run: |
+          echo "::error::flutter build apk failed — see build-logs artifact for details"
+          tail -100 mobile/build.log || true
+          exit 1
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
