@@ -30,31 +30,54 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Generate placeholder app icons
+      - name: Generate "AB" app icons
         run: |
+          pip install Pillow
           python3 - <<'EOF'
-          import struct, zlib, os
+          from PIL import Image, ImageDraw, ImageFont
+          import os, urllib.request, io
 
-          def make_png(size, color=(103, 80, 164)):
-              def chunk(name, data):
-                  c = struct.pack('>I', len(data)) + name + data
-                  return c + struct.pack('>I', zlib.crc32(name + data) & 0xffffffff)
-              raw = b''.join(b'\x00' + bytes(list(color) * size) for _ in range(size))
-              return (b'\x89PNG\r\n\x1a\n'
-                      + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 2, 0, 0, 0))
-                      + chunk(b'IDAT', zlib.compress(raw))
-                      + chunk(b'IEND', b''))
+          # Try to download a bold font; fall back to default
+          try:
+              url = "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf"
+              urllib.request.urlretrieve(url, "/tmp/font.ttf")
+              FONT_PATH = "/tmp/font.ttf"
+          except Exception:
+              FONT_PATH = None
+
+          BG = (103, 80, 164)        # deep purple (matches app seed color)
+          FG = (255, 255, 255)       # white text
+
+          def make_icon(size, round_corners=False):
+              img = Image.new("RGBA", (size, size), BG)
+              draw = ImageDraw.Draw(img)
+              # Slight rounded square background look
+              if round_corners:
+                  mask = Image.new("L", (size, size), 0)
+                  ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
+                  out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+                  out.paste(img, (0, 0), mask)
+                  img = out
+                  draw = ImageDraw.Draw(img)
+              # Draw "AB" centered
+              text = "AB"
+              font_size = int(size * 0.55)
+              font = ImageFont.truetype(FONT_PATH, font_size) if FONT_PATH else ImageFont.load_default()
+              bbox = draw.textbbox((0, 0), text, font=font, stroke_width=0)
+              tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+              x = (size - tw) // 2 - bbox[0]
+              y = (size - th) // 2 - bbox[1] - int(size * 0.03)
+              draw.text((x, y), text, fill=FG, font=font)
+              return img
 
           for dirname, size in [('mipmap-mdpi', 48), ('mipmap-hdpi', 72),
-                                  ('mipmap-xhdpi', 96), ('mipmap-xxhdpi', 144),
-                                  ('mipmap-xxxhdpi', 192)]:
+                                ('mipmap-xhdpi', 96), ('mipmap-xxhdpi', 144),
+                                ('mipmap-xxxhdpi', 192)]:
               path = f'mobile/android/app/src/main/res/{dirname}'
               os.makedirs(path, exist_ok=True)
-              data = make_png(size)
-              for name in ['ic_launcher.png', 'ic_launcher_round.png']:
-                  with open(f'{path}/{name}', 'wb') as f:
-                      f.write(data)
-          print("App icons generated")
+              make_icon(size).save(f'{path}/ic_launcher.png', 'PNG')
+              make_icon(size, round_corners=True).save(f'{path}/ic_launcher_round.png', 'PNG')
+          print("AB icons generated for all densities")
           EOF
 
       - name: Install dependencies

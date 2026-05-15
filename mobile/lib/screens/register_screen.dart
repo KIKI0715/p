@@ -97,7 +97,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                     ),
                   ),
-                  validator: (v) => (v == null || v.length < 6) ? 'Minimum 6 characters' : null,
+                  validator: (v) => (v == null || v.length < 8) ? 'Minimum 8 characters' : null,
                 ),
                 const SizedBox(height: 24),
                 FilledButton(
