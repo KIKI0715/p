@@ -1,0 +1,54 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ claude/ai-blog-automation-NkYJ3, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build debug APK
+        working-directory: mobile
+        run: flutter build apk --debug --target-platform android-arm64
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-blog-debug-apk
+          path: mobile/build/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+
+      - name: Save APK to releases/
+        run: |
+          mkdir -p releases
+          cp mobile/build/outputs/flutter-apk/app-debug.apk releases/ai_blog_debug.apk
+
+      - name: Commit APK
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add releases/ai_blog_debug.apk
+          git diff --staged --quiet || git commit -m "ci: update debug APK from GitHub Actions build"
+          git push
