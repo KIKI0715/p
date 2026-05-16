@@ -5,21 +5,21 @@ A mobile-first platform that transforms AI conversations into polished developer
 ## Architecture
 
 ```
-├── backend/    Node.js · Express · TypeScript · MongoDB · OpenAI
+├── backend/    Node.js · Express · TypeScript · MongoDB · Anthropic
 └── mobile/     Flutter · Riverpod · flutter_markdown
 ```
 
 ## User Flow
 
 ```
-Chat with AI → Save conversation → Generate article (gpt-4o) → Edit → Publish to Dev.to
+Chat with AI → Save conversation → Generate article (Claude) → Edit → Publish to Dev.to
 ```
 
 ## Backend Setup
 
 ```bash
 cd backend
-cp .env.example .env        # fill in MONGODB_URI, JWT_SECRET, OPENAI_API_KEY
+cp .env.example .env        # fill in MONGODB_URI, JWT_SECRET, ANTHROPIC_API_KEY, ENCRYPTION_KEY
 npm install
 npm run dev                 # http://localhost:3000
 ```
@@ -34,7 +34,7 @@ npm run dev                 # http://localhost:3000
 | GET/POST | /api/conversations | List / create conversations |
 | GET/DELETE | /api/conversations/:id | Get with messages / delete |
 | POST | /api/conversations/:id/messages | Send message, get AI reply |
-| POST | /api/conversations/:id/generate-article | Generate article via gpt-4o |
+| POST | /api/conversations/:id/generate-article | Generate article via Claude |
 | GET/PUT/DELETE | /api/articles/:id | Article CRUD |
 | POST | /api/articles/:id/publish | Publish to Dev.to |
 
@@ -56,6 +56,7 @@ Configure the backend URL in `mobile/lib/core/api_client.dart` (`baseUrl`) befor
 | `MONGODB_URI` | MongoDB connection string |
 | `JWT_SECRET` | Secret for signing JWTs |
 | `JWT_EXPIRES_IN` | Token lifetime (default `7d`) |
-| `OPENAI_API_KEY` | OpenAI API key (gpt-4o) |
+| `ANTHROPIC_API_KEY` | Anthropic API key (claude-opus-4-7) |
+| `ENCRYPTION_KEY` | 32-char key for encrypting stored Dev.to API keys |
 
 Users store their own Dev.to API key via the Settings screen — it is saved encrypted in their profile.

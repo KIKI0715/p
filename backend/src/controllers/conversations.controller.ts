@@ -3,7 +3,7 @@ import { AuthRequest } from '../middleware/auth';
 import { Conversation } from '../models/Conversation';
 import { Message } from '../models/Message';
 import { Article } from '../models/Article';
-import { chat, generateArticle, ChatMessage } from '../services/openai';
+import { chat, generateArticle, ChatMessage } from '../services/ai';
 
 const MAX_MESSAGE_LENGTH = 4000;
 

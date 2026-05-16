@@ -32,6 +32,8 @@ class ApiClient {
     } on SocketException catch (e) {
       throw SocketException(
           'Cannot reach server at $baseUrl — ${e.osError?.message ?? e.message}');
+    } on http.ClientException catch (e) {
+      throw SocketException('Cannot reach server at $baseUrl — ${e.message}');
     }
   }
 
