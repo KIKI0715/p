@@ -5,26 +5,41 @@ const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
-  content: string;
+  content: string | Anthropic.ContentBlockParam[];
 }
 
-function sanitizeMessages(history: ChatMessage[]): ChatMessage[] {
-  const filtered = history.filter((m) => m.role === 'user' || m.role === 'assistant');
-  if (filtered.length === 0) return [];
+function sanitizeMessages(messages: ChatMessage[]): Anthropic.MessageParam[] {
+  const cleaned = messages
+    .map((msg): Anthropic.MessageParam | null => {
+      if (typeof msg.content === 'string') {
+        return msg.content.trim() ? (msg as Anthropic.MessageParam) : null;
+      }
+      // Array content: drop empty text blocks, keep tool_use / tool_result / etc.
+      const cleanContent = msg.content.filter((block) => {
+        if (block.type === 'text') {
+          return block.text && block.text.trim().length > 0;
+        }
+        return true;
+      });
+      return cleanContent.length > 0 ? { ...msg, content: cleanContent } : null;
+    })
+    .filter((m): m is Anthropic.MessageParam => m !== null);
 
-  const result: ChatMessage[] = [];
-  for (const msg of filtered) {
+  // Anthropic requires strictly alternating user/assistant turns starting with user
+  const result: Anthropic.MessageParam[] = [];
+  for (const msg of cleaned) {
     const last = result[result.length - 1];
     if (last && last.role === msg.role) {
-      last.content += '\n\n' + msg.content;
+      // Merge consecutive same-role string messages; drop same-role array messages
+      if (typeof last.content === 'string' && typeof msg.content === 'string') {
+        last.content += '\n\n' + msg.content;
+      }
     } else {
-      result.push({ role: msg.role, content: msg.content });
+      result.push({ ...msg });
     }
   }
 
-  if (result[0]?.role === 'assistant') {
-    result.shift();
-  }
+  if (result[0]?.role === 'assistant') result.shift();
 
   return result;
 }
