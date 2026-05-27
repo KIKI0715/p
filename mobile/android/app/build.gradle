@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace "com.kiwi.aiblog"
-    compileSdk 34
+    compileSdk 35
     ndkVersion flutter.ndkVersion
 
     compileOptions {
@@ -22,10 +22,16 @@ android {
     defaultConfig {
         applicationId "com.kiwi.aiblog"
         minSdk 23
-        targetSdk 34
+        targetSdk 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled true
+    }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging false
+        }
     }
 
     buildTypes {
