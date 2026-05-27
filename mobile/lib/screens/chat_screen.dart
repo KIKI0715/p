@@ -98,7 +98,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
 
     await ref.read(articlesProvider.notifier).load();
-    final articleId = result['_id'] as String?;
+    final articleId = result['id'] as String?;
     if (articleId != null && mounted) {
       Navigator.push(
         context,

@@ -4,11 +4,6 @@ on:
   push:
     branches: [ claude/ai-blog-automation-NkYJ3, main ]
   workflow_dispatch:
-    inputs:
-      api_base_url:
-        description: 'Backend URL (e.g. https://p-production-fee8.up.railway.app/api)'
-        required: false
-        default: 'https://p-production-fee8.up.railway.app/api'
 
 jobs:
   build:
@@ -86,11 +81,7 @@ jobs:
 
       - name: Build debug APK
         working-directory: mobile
-        run: |
-          API_URL="${{ github.event.inputs.api_base_url || 'https://p-production-fee8.up.railway.app/api' }}"
-          echo "Building with API_BASE_URL=$API_URL"
-          flutter build apk --debug --target-platform android-arm64 \
-            --dart-define=API_BASE_URL="$API_URL"
+        run: flutter build apk --debug --target-platform android-arm64
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

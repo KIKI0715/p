@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'message.dart';
 
 class Conversation {
@@ -17,17 +18,15 @@ class Conversation {
     this.messages = const [],
   });
 
-  factory Conversation.fromJson(Map<String, dynamic> json) {
+  factory Conversation.fromSnapshot(DocumentSnapshot doc, {List<Message> messages = const []}) {
+    final data = doc.data() as Map<String, dynamic>;
     return Conversation(
-      id: json['_id'] as String,
-      title: json['title'] as String,
-      tags: (json['tags'] as List<dynamic>?)?.cast<String>() ?? [],
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: DateTime.parse(json['updatedAt'] as String),
-      messages: (json['messages'] as List<dynamic>?)
-              ?.map((m) => Message.fromJson(m as Map<String, dynamic>))
-              .toList() ??
-          [],
+      id: doc.id,
+      title: data['title'] as String,
+      tags: (data['tags'] as List<dynamic>?)?.cast<String>() ?? [],
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt: (data['updatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      messages: messages,
     );
   }
 }
