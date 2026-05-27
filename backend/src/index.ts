@@ -36,20 +36,25 @@ app.use('/api/conversations/:id/messages', aiLimiter);
 app.use('/api/conversations/:id/generate-article', aiLimiter);
 app.use('/api/articles', articleRoutes);
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+let dbReady = false;
+
+app.get('/health', (_req, res) => res.json({ status: 'ok', db: dbReady ? 'connected' : 'connecting' }));
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-mongoose
-  .connect(env.mongodbUri)
-  .then(() => {
-    console.log('MongoDB connected');
-    app.listen(env.port, () => console.log(`Server running on port ${env.port}`));
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err);
-    process.exit(1);
-  });
+app.listen(env.port, () => {
+  console.log(`Server running on port ${env.port}`);
+  mongoose
+    .connect(env.mongodbUri)
+    .then(() => {
+      dbReady = true;
+      console.log('MongoDB connected');
+    })
+    .catch((err) => {
+      console.error('MongoDB connection error:', err);
+      process.exit(1);
+    });
+});
