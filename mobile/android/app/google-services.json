@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "634354355277",
+    "project_id": "ai-blog-dfd2d",
+    "storage_bucket": "ai-blog-dfd2d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:634354355277:android:425ac11460a3ca44aaa004",
+        "android_client_info": {
+          "package_name": "com.kiwi.aiblog"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCqpP8lFiSe8y0UNWvE9cgH8aJQPeWzhGw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

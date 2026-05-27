@@ -1,4 +1,4 @@
-package com.aiblog.mobile
+package com.kiwi.aiblog
 
 import io.flutter.embedding.android.FlutterActivity
 
