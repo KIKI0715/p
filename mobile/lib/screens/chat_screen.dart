@@ -1,3 +1,4 @@
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/message.dart';
@@ -74,25 +75,58 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     });
     _scrollToBottom();
 
-    final reply = await ref.read(conversationsProvider.notifier).sendMessage(widget.conversationId, text);
-    if (mounted) {
+    try {
+      final reply = await ref
+          .read(conversationsProvider.notifier)
+          .sendMessage(widget.conversationId, text);
+      if (mounted) {
+        setState(() {
+          _messages = [..._messages, reply];
+          _loading = false;
+        });
+        _scrollToBottom();
+      }
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
       setState(() {
-        if (reply != null) _messages = [..._messages, reply];
+        _messages = _messages.where((m) => m.id != userMsg.id).toList();
         _loading = false;
       });
-      _scrollToBottom();
+      _inputCtrl.text = text;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Claude 응답 실패: ${e.message ?? e.code}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          action: SnackBarAction(label: '다시 시도', textColor: Colors.white, onPressed: _send),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _messages = _messages.where((m) => m.id != userMsg.id).toList();
+        _loading = false;
+      });
+      _inputCtrl.text = text;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('오류: $e'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
     }
   }
 
   Future<void> _generateArticle() async {
     setState(() => _generating = true);
-    final result = await ref.read(conversationsProvider.notifier).generateArticle(widget.conversationId);
+    final result = await ref
+        .read(conversationsProvider.notifier)
+        .generateArticle(widget.conversationId);
     if (!mounted) return;
     setState(() => _generating = false);
 
     if (result == null || result.containsKey('error')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(result?['error'] as String? ?? 'Generation failed')),
+        SnackBar(content: Text(result?['error'] as String? ?? '생성 실패')),
       );
       return;
     }
@@ -117,9 +151,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             TextButton.icon(
               onPressed: _generating ? null : _generateArticle,
               icon: _generating
-                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 16,
+                      width: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.auto_awesome),
-              label: const Text('Generate Article'),
+              label: const Text('글로 만들기'),
             ),
         ],
       ),
@@ -127,69 +165,93 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         children: [
           Expanded(
             child: _messages.isEmpty && !_loading
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.chat_bubble_outline, size: 56, color: Colors.grey),
-                        const SizedBox(height: 12),
-                        Text('Start chatting about your idea',
-                            style: TextStyle(color: Colors.grey[600])),
-                      ],
-                    ),
-                  )
+                ? _buildEmptyState()
                 : ListView.builder(
                     controller: _scrollCtrl,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     itemCount: _messages.length + (_loading ? 1 : 0),
                     itemBuilder: (ctx, i) {
-                      if (i == _messages.length) {
-                        return const Align(
-                          alignment: Alignment.centerLeft,
-                          child: Padding(
-                            padding: EdgeInsets.all(12),
-                            child: SizedBox(
-                              height: 24,
-                              width: 48,
-                              child: LinearProgressIndicator(),
-                            ),
-                          ),
-                        );
-                      }
+                      if (i == _messages.length) return const TypingIndicator();
                       return MessageBubble(message: _messages[i]);
                     },
                   ),
           ),
           const Divider(height: 1),
-          Padding(
-            padding: EdgeInsets.only(
-              left: 12,
-              right: 8,
-              bottom: MediaQuery.of(context).viewInsets.bottom + 8,
-              top: 8,
+          _buildInput(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.auto_awesome,
+                size: 36,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _inputCtrl,
-                    minLines: 1,
-                    maxLines: 5,
-                    textInputAction: TextInputAction.newline,
-                    decoration: InputDecoration(
-                      hintText: 'Ask anything…',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _loading ? null : _send,
-                  icon: const Icon(Icons.send),
-                ),
-              ],
+            const SizedBox(height: 16),
+            Text(
+              'Claude와 대화를 시작하세요',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+            Text(
+              '오늘 있었던 일, 생각, 감정 무엇이든 이야기해 보세요.\n대화가 끝나면 글로 정리해 드립니다.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey[600], height: 1.5),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInput() {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 12,
+        right: 8,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 8,
+        top: 8,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _inputCtrl,
+              minLines: 1,
+              maxLines: 5,
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: '무슨 생각을 하고 있나요?',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              onSubmitted: (_) => _send(),
+            ),
+          ),
+          const SizedBox(width: 8),
+          IconButton.filled(
+            onPressed: _loading ? null : _send,
+            icon: const Icon(Icons.send),
           ),
         ],
       ),

@@ -97,22 +97,22 @@ class ConversationsNotifier extends StateNotifier<AsyncValue<List<Conversation>>
     }
   }
 
-  Future<Message?> sendMessage(String conversationId, String content) async {
-    try {
-      final result = await FirebaseFunctions.instance
-          .httpsCallable('sendMessage')
-          .call({'conversationId': conversationId, 'content': content});
-      final data = Map<String, dynamic>.from(result.data as Map);
-      return Message.fromMap(data, conversationId: conversationId);
-    } catch (_) {
-      return null;
-    }
+  // Throws on failure so the UI can show the real error message.
+  Future<Message> sendMessage(String conversationId, String content) async {
+    final result = await FirebaseFunctions.instance
+        .httpsCallable('sendMessage')
+        .call({'conversationId': conversationId, 'content': content});
+    final data = Map<String, dynamic>.from(result.data as Map);
+    return Message.fromMap(data, conversationId: conversationId);
   }
 
   Future<Map<String, dynamic>?> generateArticle(String conversationId) async {
     try {
       final result = await FirebaseFunctions.instance
-          .httpsCallable('generateArticle', options: HttpsCallableOptions(timeout: const Duration(seconds: 120)))
+          .httpsCallable(
+            'generateArticle',
+            options: HttpsCallableOptions(timeout: const Duration(seconds: 120)),
+          )
           .call({'conversationId': conversationId});
       return Map<String, dynamic>.from(result.data as Map);
     } on FirebaseFunctionsException catch (e) {
