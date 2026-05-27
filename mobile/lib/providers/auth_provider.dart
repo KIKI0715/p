@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,14 +6,8 @@ class AuthUser {
   final String id;
   final String email;
   final String name;
-  final bool hasDevtoKey;
 
-  const AuthUser({
-    required this.id,
-    required this.email,
-    required this.name,
-    required this.hasDevtoKey,
-  });
+  const AuthUser({required this.id, required this.email, required this.name});
 }
 
 class AuthState {
@@ -57,8 +50,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     return AuthUser(
       id: firebaseUser.uid,
       email: firebaseUser.email ?? '',
-      name: data?['name'] as String? ?? firebaseUser.displayName ?? 'User',
-      hasDevtoKey: data?['devtoApiKey'] != null,
+      name: data?['name'] as String? ?? firebaseUser.displayName ?? '사용자',
     );
   }
 
@@ -69,7 +61,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
         email: email.trim(),
         password: password,
       );
-      // authStateChanges listener will update state
       return true;
     } on FirebaseAuthException catch (e) {
       state = AuthState(error: _authError(e));
@@ -89,14 +80,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
       );
       final user = credential.user!;
       await user.updateDisplayName(name.trim());
-
-      // Create user document in Firestore
       await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
         'name': name.trim(),
         'email': email.trim().toLowerCase(),
       });
-
-      // authStateChanges listener will update state
       return true;
     } on FirebaseAuthException catch (e) {
       state = AuthState(error: _authError(e));
@@ -109,34 +96,6 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
   Future<void> logout() async {
     await FirebaseAuth.instance.signOut();
-    // authStateChanges listener will set state to unauthenticated
-  }
-
-  Future<bool> updateProfile({String? name, String? devtoApiKey}) async {
-    final currentUser = state.user;
-    if (currentUser == null) return false;
-    try {
-      if (name != null && name.trim().isNotEmpty) {
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(currentUser.id)
-            .update({'name': name.trim()});
-        await FirebaseAuth.instance.currentUser?.updateDisplayName(name.trim());
-      }
-      if (devtoApiKey != null && devtoApiKey.trim().isNotEmpty) {
-        await FirebaseFunctions.instance
-            .httpsCallable('setDevtoApiKey')
-            .call({'devtoApiKey': devtoApiKey.trim()});
-      }
-      // Reload profile
-      final firebaseUser = FirebaseAuth.instance.currentUser;
-      if (firebaseUser != null) {
-        state = state.copyWith(user: await _loadUser(firebaseUser));
-      }
-      return true;
-    } catch (_) {
-      return false;
-    }
   }
 
   String _authError(FirebaseAuthException e) {
@@ -144,15 +103,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
       case 'user-not-found':
       case 'wrong-password':
       case 'invalid-credential':
-        return 'Invalid email or password';
+        return '이메일 또는 비밀번호가 올바르지 않아요';
       case 'email-already-in-use':
-        return 'Email already in use';
+        return '이미 가입된 이메일이에요';
       case 'weak-password':
-        return 'Password must be at least 6 characters';
+        return '비밀번호가 너무 짧아요';
       case 'invalid-email':
-        return 'Invalid email format';
+        return '이메일 형식이 올바르지 않아요';
       default:
-        return e.message ?? 'Authentication failed';
+        return e.message ?? '로그인에 실패했어요';
     }
   }
 }

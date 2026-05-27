@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../core/theme.dart';
+import '../models/diary_entry.dart';
 import '../providers/auth_provider.dart';
-import '../providers/conversations_provider.dart';
-import '../providers/articles_provider.dart';
-import '../models/conversation.dart';
-import '../models/article.dart';
-import '../widgets/article_card.dart';
-import 'chat_screen.dart';
-import 'article_editor_screen.dart';
+import '../providers/diaries_provider.dart';
+import '../widgets/diary_mode_card.dart';
+import '../widgets/mood_slider.dart';
+import 'diary_chat_screen.dart';
+import 'diary_view_screen.dart';
 import 'login_screen.dart';
-import 'settings_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -18,176 +18,253 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends ConsumerState<HomeScreen>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabs;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabs = TabController(length: 2, vsync: this);
-  }
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  Mood? _todayMood;
+  final _cardCtrl = PageController(viewportFraction: 0.62, initialPage: 0);
+  int _cardIndex = 0;
 
   @override
   void dispose() {
-    _tabs.dispose();
+    _cardCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _newConversation() async {
-    final titleCtrl = TextEditingController();
-    final title = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('New Conversation'),
-        content: TextField(
-          controller: titleCtrl,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Conversation title…'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, titleCtrl.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-    if (title == null || title.isEmpty) return;
-    final conv = await ref.read(conversationsProvider.notifier).create(title, []);
-    if (conv != null && mounted) {
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ChatScreen(conversationId: conv.id, title: conv.title)));
+  Future<void> _startDiary(DiaryType type) async {
+    final entry = await ref.read(diariesProvider.notifier).create(
+          date: DateTime.now(),
+          type: type,
+          mood: _todayMood,
+        );
+    if (entry == null || !mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('일기를 시작할 수 없어요')),
+      );
+      return;
     }
-  }
-
-  Future<void> _deleteConversation(String id) async {
-    await ref.read(conversationsProvider.notifier).delete(id);
-  }
-
-  Future<void> _deleteArticle(String id) async {
-    await ref.read(articlesProvider.notifier).delete(id);
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => DiaryChatScreen(diaryId: entry.id)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final auth = ref.watch(authProvider);
-    final conversations = ref.watch(conversationsProvider);
-    final articles = ref.watch(articlesProvider);
+    final diaries = ref.watch(diariesProvider);
+    final today = DateTime.now();
+    final dateStr = DateFormat('yyyy년 M월 d일 EEEE', 'ko_KR').format(today);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Hi, ${auth.user?.name ?? ''}'),
+        title: const Text('해피리'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
+            icon: const Icon(Icons.logout, size: 20),
+            onPressed: () async {
+              await ref.read(authProvider.notifier).logout();
+              if (!mounted) return;
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+              );
+            },
           ),
         ],
-        bottom: TabBar(
-          controller: _tabs,
-          tabs: const [
-            Tab(icon: Icon(Icons.chat_bubble_outline), text: 'Conversations'),
-            Tab(icon: Icon(Icons.article_outlined), text: 'Articles'),
+      ),
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+                child: Text(
+                  dateStr,
+                  style: const TextStyle(fontSize: 15, color: HappilyColors.muted),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: MoodSlider(
+                  value: _todayMood,
+                  onChanged: (m) => setState(() => _todayMood = m),
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                height: 410,
+                child: PageView.builder(
+                  controller: _cardCtrl,
+                  itemCount: DiaryType.values.length,
+                  onPageChanged: (i) => setState(() => _cardIndex = i),
+                  itemBuilder: (_, i) {
+                    final type = DiaryType.values[i];
+                    return Center(
+                      child: DiaryModeCard(type: type, onTap: () => _startDiary(type)),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  DiaryType.values.length,
+                  (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: i == _cardIndex ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: i == _cardIndex
+                          ? DiaryType.values[i].color
+                          : const Color(0xFFD9D9D9),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 32),
+              _PastDiariesSection(diaries: diaries),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PastDiariesSection extends StatelessWidget {
+  final AsyncValue<List<DiaryEntry>> diaries;
+  const _PastDiariesSection({required this.diaries});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            '지난 일기',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: HappilyColors.ink),
+          ),
+          const SizedBox(height: 12),
+          diaries.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Text('불러오기 실패: $e', style: const TextStyle(color: HappilyColors.danger)),
+            data: (list) {
+              if (list.isEmpty) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  alignment: Alignment.center,
+                  child: const Text(
+                    '아직 작성한 일기가 없어요',
+                    style: TextStyle(color: HappilyColors.muted, fontSize: 14),
+                  ),
+                );
+              }
+              return Column(
+                children: list.map((d) => _DiaryListTile(entry: d)).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DiaryListTile extends StatelessWidget {
+  final DiaryEntry entry;
+  const _DiaryListTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    final dateStr = DateFormat('M월 d일', 'ko_KR').format(entry.date);
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => DiaryViewScreen(diaryId: entry.id)),
+      ),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: HappilyColors.card,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0D000000), blurRadius: 6, offset: Offset(0, 1)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 6,
+              height: 48,
+              decoration: BoxDecoration(
+                color: entry.type.color,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        dateStr,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: HappilyColors.muted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: entry.type.color,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          entry.type.label,
+                          style: const TextStyle(fontSize: 11, color: HappilyColors.ink),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    entry.title.isEmpty ? '(작성 중)' : entry.title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: HappilyColors.ink,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (entry.mood != null)
+              Container(
+                width: 28,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: entry.mood!.color,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabs,
-        children: [
-          _buildConversationsList(conversations),
-          _buildArticlesList(articles),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _newConversation,
-        icon: const Icon(Icons.add),
-        label: const Text('New Chat'),
-      ),
-    );
-  }
-
-  Widget _buildConversationsList(AsyncValue<List<Conversation>> state) {
-    return state.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (list) => list.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No conversations yet.\nTap + to start chatting.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: () => ref.read(conversationsProvider.notifier).load(),
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: list.length,
-                itemBuilder: (ctx, i) {
-                  final c = list[i];
-                  return Dismissible(
-                    key: Key(c.id),
-                    direction: DismissDirection.endToStart,
-                    background: Container(
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 16),
-                      color: Colors.red,
-                      child: const Icon(Icons.delete, color: Colors.white),
-                    ),
-                    onDismissed: (_) => _deleteConversation(c.id),
-                    child: ListTile(
-                      leading: const CircleAvatar(child: Icon(Icons.chat_bubble_outline)),
-                      title: Text(c.title),
-                      subtitle: Text('${c.tags.isEmpty ? '' : c.tags.map((t) => '#$t').join(' ')}', style: const TextStyle(fontSize: 12)),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ChatScreen(conversationId: c.id, title: c.title)),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-    );
-  }
-
-  Widget _buildArticlesList(AsyncValue<List<Article>> state) {
-    return state.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('Error: $e')),
-      data: (list) => list.isEmpty
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.article_outlined, size: 64, color: Colors.grey),
-                  SizedBox(height: 16),
-                  Text('No articles yet.\nGenerate one from a conversation.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-            )
-          : RefreshIndicator(
-              onRefresh: () => ref.read(articlesProvider.notifier).load(),
-              child: ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: list.length,
-                itemBuilder: (ctx, i) {
-                  final a = list[i];
-                  return ArticleCard(
-                    article: a,
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => ArticleEditorScreen(articleId: a.id)),
-                    ),
-                    onDelete: () => _deleteArticle(a.id),
-                  );
-                },
-              ),
-            ),
     );
   }
 }

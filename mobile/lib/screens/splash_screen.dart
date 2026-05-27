@@ -1,23 +1,36 @@
 import 'package:flutter/material.dart';
+import '../core/theme.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
+    return Scaffold(
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.article_outlined, size: 64, color: Color(0xFF6750A4)),
-            SizedBox(height: 16),
-            Text(
-              'AI Blog',
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: HappilyColors.primary,
+                borderRadius: BorderRadius.circular(26),
+              ),
+              child: const Icon(Icons.favorite, color: Colors.white, size: 40),
             ),
-            SizedBox(height: 24),
-            CircularProgressIndicator(),
+            const SizedBox(height: 20),
+            const Text(
+              '해피리',
+              style: TextStyle(
+                fontSize: 30,
+                fontWeight: FontWeight.w300,
+                color: HappilyColors.ink,
+              ),
+            ),
+            const SizedBox(height: 32),
+            const CircularProgressIndicator(),
           ],
         ),
       ),
