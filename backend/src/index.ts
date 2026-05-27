@@ -56,7 +56,7 @@ process.on('unhandledRejection', (reason) => {
   console.error('UNHANDLED REJECTION:', reason);
 });
 
-app.listen(env.port, () => {
+app.listen(env.port, '0.0.0.0', () => {
   console.log(`Server running on port ${env.port}`);
   mongoose
     .connect(env.mongodbUri)
