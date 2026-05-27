@@ -10,6 +10,10 @@ import articleRoutes from './routes/articles.routes';
 
 const app = express();
 
+// Railway terminates TLS at its edge and forwards via X-Forwarded-For.
+// Without this, express-rate-limit v7 rejects requests and crashes the process.
+app.set('trust proxy', 1);
+
 app.use(helmet());
 app.use(cors({ origin: env.allowedOrigins, credentials: true }));
 app.use(express.json({ limit: '50kb' }));
@@ -43,6 +47,13 @@ app.get('/health', (_req, res) => res.json({ status: 'ok', db: dbReady ? 'connec
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('UNHANDLED REJECTION:', reason);
 });
 
 app.listen(env.port, () => {
