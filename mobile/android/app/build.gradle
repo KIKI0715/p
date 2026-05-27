@@ -36,9 +36,12 @@ android {
 
     buildTypes {
         release {
+            // Debug signing keeps `flutter build apk --release` runnable without a keystore.
             signingConfig signingConfigs.debug
-            minifyEnabled true
-            shrinkResources true
+            // R8 / shrinker is off: Firebase + Flutter plugins need extensive keep rules,
+            // and an APK that boots reliably matters more than a few MB right now.
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }

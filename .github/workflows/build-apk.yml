@@ -21,7 +21,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.24.5'
+          flutter-version: '3.29.0'
           channel: stable
           cache: true
 
@@ -79,13 +79,13 @@ jobs:
         working-directory: mobile
         run: flutter pub get
 
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: mobile
-        run: flutter build apk --debug --target-platform android-arm64
+        run: flutter build apk --release --target-platform android-arm64
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ai-blog-debug-apk
-          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          name: ai-blog-release-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
