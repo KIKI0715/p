@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /diaries/{diaryId} {
+        // Client can create the diary shell (date, type, mood); summary/title come from
+        // the finalizeDiary Cloud Function but the client is allowed to read them back.
+        allow read, create, delete: if request.auth != null && request.auth.uid == userId;
+        // Client may update its own mood; title/summary are written server-side.
+        allow update: if request.auth != null && request.auth.uid == userId;
+
+        match /messages/{msgId} {
+          // Client reads messages; only the sendDiaryMessage Cloud Function writes them.
+          allow read: if request.auth != null && request.auth.uid == userId;
+          allow write: if false;
+        }
+      }
+    }
+  }
+}

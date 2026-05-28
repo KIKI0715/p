@@ -1,27 +1,13 @@
-import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../core/api_client.dart';
-import '../core/secure_storage.dart';
 
 class AuthUser {
   final String id;
   final String email;
   final String name;
-  final bool hasDevtoKey;
 
-  const AuthUser({
-    required this.id,
-    required this.email,
-    required this.name,
-    required this.hasDevtoKey,
-  });
-
-  factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
-        id: json['id'] as String,
-        email: json['email'] as String,
-        name: json['name'] as String,
-        hasDevtoKey: json['hasDevtoKey'] as bool? ?? false,
-      );
+  const AuthUser({required this.id, required this.email, required this.name});
 }
 
 class AuthState {
@@ -46,37 +32,38 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> _init() async {
-    final token = await SecureStorage.getToken();
-    if (token == null) {
-      state = const AuthState();
-      return;
-    }
-    try {
-      final response = await ApiClient.get('/auth/me');
-      if (response.statusCode == 200) {
-        final json = ApiClient.parseJson(response);
-        state = AuthState(user: AuthUser.fromJson(json));
-      } else {
-        await SecureStorage.deleteToken();
+    FirebaseAuth.instance.authStateChanges().listen((firebaseUser) async {
+      if (firebaseUser == null) {
         state = const AuthState();
+        return;
       }
-    } catch (_) {
-      state = const AuthState();
-    }
+      state = AuthState(user: await _loadUser(firebaseUser));
+    });
+  }
+
+  Future<AuthUser> _loadUser(User firebaseUser) async {
+    final doc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(firebaseUser.uid)
+        .get();
+    final data = doc.data();
+    return AuthUser(
+      id: firebaseUser.uid,
+      email: firebaseUser.email ?? '',
+      name: data?['name'] as String? ?? firebaseUser.displayName ?? '사용자',
+    );
   }
 
   Future<bool> login(String email, String password) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final response = await ApiClient.post('/auth/login', {'email': email, 'password': password});
-      if (response.statusCode == 200) {
-        final json = ApiClient.parseJson(response);
-        await SecureStorage.saveToken(json['token'] as String);
-        state = AuthState(user: AuthUser.fromJson(json['user'] as Map<String, dynamic>));
-        return true;
-      }
-      final err = jsonDecode(response.body)['error'] as String? ?? 'Login failed';
-      state = AuthState(error: err);
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      return true;
+    } on FirebaseAuthException catch (e) {
+      state = AuthState(error: _authError(e));
       return false;
     } catch (e) {
       state = AuthState(error: e.toString());
@@ -87,19 +74,19 @@ class AuthNotifier extends StateNotifier<AuthState> {
   Future<bool> register(String email, String password, String name) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final response = await ApiClient.post('/auth/register', {
-        'email': email,
-        'password': password,
-        'name': name,
+      final credential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      final user = credential.user!;
+      await user.updateDisplayName(name.trim());
+      await FirebaseFirestore.instance.collection('users').doc(user.uid).set({
+        'name': name.trim(),
+        'email': email.trim().toLowerCase(),
       });
-      if (response.statusCode == 201) {
-        final json = ApiClient.parseJson(response);
-        await SecureStorage.saveToken(json['token'] as String);
-        state = AuthState(user: AuthUser.fromJson(json['user'] as Map<String, dynamic>));
-        return true;
-      }
-      final err = jsonDecode(response.body)['error'] as String? ?? 'Registration failed';
-      state = AuthState(error: err);
+      return true;
+    } on FirebaseAuthException catch (e) {
+      state = AuthState(error: _authError(e));
       return false;
     } catch (e) {
       state = AuthState(error: e.toString());
@@ -108,24 +95,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
-    await SecureStorage.deleteToken();
-    state = const AuthState();
+    await FirebaseAuth.instance.signOut();
   }
 
-  Future<bool> updateProfile({String? name, String? devtoApiKey}) async {
-    try {
-      final response = await ApiClient.put('/auth/me', {
-        if (name != null) 'name': name,
-        if (devtoApiKey != null) 'devtoApiKey': devtoApiKey,
-      });
-      if (response.statusCode == 200) {
-        final json = ApiClient.parseJson(response);
-        state = state.copyWith(user: AuthUser.fromJson(json));
-        return true;
-      }
-      return false;
-    } catch (_) {
-      return false;
+  String _authError(FirebaseAuthException e) {
+    switch (e.code) {
+      case 'user-not-found':
+      case 'wrong-password':
+      case 'invalid-credential':
+        return '이메일 또는 비밀번호가 올바르지 않아요';
+      case 'email-already-in-use':
+        return '이미 가입된 이메일이에요';
+      case 'weak-password':
+        return '비밀번호가 너무 짧아요';
+      case 'invalid-email':
+        return '이메일 형식이 올바르지 않아요';
+      default:
+        return e.message ?? '로그인에 실패했어요';
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class Message {
   final String id;
   final String conversationId;
@@ -13,13 +15,25 @@ class Message {
     required this.createdAt,
   });
 
-  factory Message.fromJson(Map<String, dynamic> json) {
+  factory Message.fromSnapshot(DocumentSnapshot doc, {String conversationId = ''}) {
+    final data = doc.data() as Map<String, dynamic>;
     return Message(
-      id: json['_id'] as String,
-      conversationId: json['conversationId'] as String,
-      role: json['role'] as String,
-      content: json['content'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
+      id: doc.id,
+      conversationId: conversationId,
+      role: data['role'] as String,
+      content: data['content'] as String,
+      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  // Legacy support — used by Cloud Function return values (plain Map)
+  factory Message.fromMap(Map<String, dynamic> map, {String conversationId = ''}) {
+    return Message(
+      id: map['id'] as String? ?? '',
+      conversationId: conversationId,
+      role: map['role'] as String,
+      content: map['content'] as String,
+      createdAt: DateTime.now(),
     );
   }
 

@@ -1,0 +1,91 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ claude/ai-blog-automation-NkYJ3, main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.0'
+          channel: stable
+          cache: true
+
+      - name: Generate "AB" app icons
+        run: |
+          pip install Pillow
+          python3 - <<'EOF'
+          from PIL import Image, ImageDraw, ImageFont
+          import os, urllib.request, io
+
+          # Try to download a bold font; fall back to default
+          try:
+              url = "https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf"
+              urllib.request.urlretrieve(url, "/tmp/font.ttf")
+              FONT_PATH = "/tmp/font.ttf"
+          except Exception:
+              FONT_PATH = None
+
+          BG = (103, 80, 164)        # deep purple (matches app seed color)
+          FG = (255, 255, 255)       # white text
+
+          def make_icon(size, round_corners=False):
+              img = Image.new("RGBA", (size, size), BG)
+              draw = ImageDraw.Draw(img)
+              # Slight rounded square background look
+              if round_corners:
+                  mask = Image.new("L", (size, size), 0)
+                  ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
+                  out = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+                  out.paste(img, (0, 0), mask)
+                  img = out
+                  draw = ImageDraw.Draw(img)
+              # Draw "AB" centered
+              text = "AB"
+              font_size = int(size * 0.55)
+              font = ImageFont.truetype(FONT_PATH, font_size) if FONT_PATH else ImageFont.load_default()
+              bbox = draw.textbbox((0, 0), text, font=font, stroke_width=0)
+              tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+              x = (size - tw) // 2 - bbox[0]
+              y = (size - th) // 2 - bbox[1] - int(size * 0.03)
+              draw.text((x, y), text, fill=FG, font=font)
+              return img
+
+          for dirname, size in [('mipmap-mdpi', 48), ('mipmap-hdpi', 72),
+                                ('mipmap-xhdpi', 96), ('mipmap-xxhdpi', 144),
+                                ('mipmap-xxxhdpi', 192)]:
+              path = f'mobile/android/app/src/main/res/{dirname}'
+              os.makedirs(path, exist_ok=True)
+              make_icon(size).save(f'{path}/ic_launcher.png', 'PNG')
+              make_icon(size, round_corners=True).save(f'{path}/ic_launcher_round.png', 'PNG')
+          print("AB icons generated for all densities")
+          EOF
+
+      - name: Install dependencies
+        working-directory: mobile
+        run: flutter pub get
+
+      - name: Build release APK
+        working-directory: mobile
+        run: flutter build apk --release --target-platform android-arm64
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ai-blog-release-apk
+          path: mobile/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
