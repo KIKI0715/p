@@ -7,8 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
-import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/main_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/splash_screen.dart';
 
@@ -42,7 +42,7 @@ class HappilyApp extends ConsumerWidget {
       home: auth.isLoading
           ? const SplashScreen()
           : auth.isAuthenticated
-              ? const HomeScreen()
+              ? const MainScreen()
               : (seenOnboarding ? const LoginScreen() : const OnboardingScreen()),
     );
   }

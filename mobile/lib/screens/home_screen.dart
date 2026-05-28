@@ -3,13 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../core/theme.dart';
 import '../models/diary_entry.dart';
-import '../providers/auth_provider.dart';
 import '../providers/diaries_provider.dart';
 import '../widgets/diary_mode_card.dart';
 import '../widgets/mood_slider.dart';
 import 'diary_chat_screen.dart';
 import 'diary_view_screen.dart';
-import 'login_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -55,19 +53,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('해피리'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, size: 20),
-            onPressed: () async {
-              await ref.read(authProvider.notifier).logout();
-              if (!mounted) return;
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (_) => false,
-              );
-            },
-          ),
-        ],
       ),
       body: SafeArea(
         top: false,
