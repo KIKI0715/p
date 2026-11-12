@@ -103,8 +103,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .overlay { position: absolute; inset: 0; display: grid; place-items: center; padding-block: 24px; padding-left: var(--gl); padding-right: var(--gr); overflow-y: auto; user-select: text; -webkit-user-select: text; touch-action: pan-y; }
 #title { background: linear-gradient(90deg, rgba(8, 12, 22, .82), rgba(8, 12, 22, .35) 55%, rgba(8, 12, 22, 0) 80%), linear-gradient(180deg, rgba(8, 12, 22, 0) 55%, rgba(8, 12, 22, .7)); align-items: end; justify-items: start; }
 #title .inner { width: min(620px, 100%); padding-bottom: 6vh; padding-left: clamp(0px, 5vw, 80px); display: grid; gap: 14px; }
-#title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(44px, 9vw, 92px); line-height: .95; letter-spacing: .04em; text-wrap: balance; }
-#title h1 span { display: block; font-family: var(--saga); font-size: clamp(16px, 2.4vw, 22px); letter-spacing: .3em; color: var(--ember); font-weight: 400; margin-bottom: 10px; }
+#title h1 { margin: 0; font-family: var(--display); font-weight: 700; font-size: clamp(56px, 11vw, 120px); line-height: .86; letter-spacing: .03em; display: grid; gap: 14px; }
+#title h1 em { font-style: normal; font-family: var(--saga); font-weight: 400; font-size: clamp(20px, 3.1vw, 34px); letter-spacing: .02em; line-height: 1.15; color: var(--ember); }
+#title .saga-mark { margin: 0; font-family: var(--display); font-size: 13px; letter-spacing: .34em; text-transform: uppercase; color: var(--bone-dim); display: flex; align-items: center; gap: 12px; }
+#title .saga-mark::before { content: ""; width: 34px; height: 1px; background: var(--bone-dim); }
 #title p { margin: 0; max-width: 52ch; color: var(--bone); }
 .acts { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 6px; }
 .btn { background: var(--ember); color: #1a0c02; border: 0; padding: 12px 26px; font-family: var(--saga); font-weight: 700; font-size: 17px; clip-path: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%); }
@@ -117,7 +119,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn.ghost:hover { border-color: var(--bone); background: transparent; }
 
 #panel, #journal { background: rgba(6, 9, 16, .82); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.sheet { width: min(720px, 100%); background: linear-gradient(180deg, #151b2c, #0f1422); border: 1px solid var(--line); border-top: 3px solid var(--ember); padding: clamp(18px, 4vw, 34px); display: grid; gap: 16px; min-width: 0; }
+.sheet { position: relative; width: min(760px, 100%); background: #10151f; outline: 1px solid var(--line); outline-offset: -7px; box-shadow: 0 0 0 1px rgba(236, 228, 210, .32), 0 30px 80px rgba(0, 0, 0, .55); padding: clamp(24px, 4.5vw, 44px); display: grid; gap: 18px; min-width: 0; }
 .sheet header { display: flex; gap: 16px; align-items: center; }
 .sheet header img { width: 60px; height: 60px; flex: none; }
 .sheet h2 { margin: 0; font-family: var(--saga); font-size: clamp(22px, 4vw, 30px); line-height: 1.2; text-wrap: balance; }
@@ -127,13 +129,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .kv { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; margin: 0; }
 .kv dt { color: var(--bone-dim); }
 .kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-.loot { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
-.loot li { border-left: 2px solid var(--ember-deep); padding-left: 14px; display: grid; gap: 4px; min-width: 0; }
+.loot { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; counter-reset: loot; }
+.loot > li { counter-increment: loot; display: grid; grid-template-columns: 2.2em minmax(0, 1fr); column-gap: 10px; row-gap: 6px; padding: 16px 0; border-top: 1px solid var(--line); }
+.loot > li:first-child { border-top: 0; padding-top: 4px; }
+.loot > li::before { content: counter(loot, decimal-leading-zero); grid-row: 1 / span 3; font-family: var(--display); font-size: 17px; color: var(--ember); font-variant-numeric: tabular-nums; padding-top: 1px; }
+.loot > li > * { grid-column: 2; }
+.loot-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.loot-head h3 { font-size: 18px; }
+.kind { font-size: 13px; color: var(--bone-dim); }
+.jnav { display: flex; flex-wrap: wrap; gap: 8px; }
+.jnav button { background: none; border: 1px solid var(--line); padding: 5px 14px; font-family: var(--saga); font-size: 14px; }
+.jnav button:hover { border-color: var(--ember); color: var(--ember); }
+#keys { transition: opacity 1.5s; } #keys.dim { opacity: .28; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.tags li { border: 1px solid var(--line); padding: 1px 9px; font-size: 13px; }
+.tags li { border: 1px solid var(--line); padding: 1px 9px; font-size: 12.5px; color: var(--bone-dim); }
 .realm-block { display: grid; gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
 .realm-block.locked { color: var(--bone-dim); }
 .realm-block .label { color: var(--ember); }
+.realm-block { scroll-margin-top: 12px; }
 .sheet .foot { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
 .sheet .foot small { color: var(--bone-dim); }
 
@@ -197,7 +210,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
   <div id="title" class="overlay">
     <div class="inner">
-      <h1><span id="tKicker"></span>Emberfall Saga</h1>
+      <p class="saga-mark">Emberfall Saga</p>
+      <h1><span id="tName"></span><em id="tRole"></em></h1>
       <p id="tLead"></p>
       <div class="acts">
         <button class="btn" id="btnStart" disabled>불러오는 중 0%</button>

@@ -42,7 +42,7 @@ function blocksHTML(blocks) {
     if (b.h) return `<h3>${esc(b.h)}</h3>`;
     if (b.tags) return `<ul class="tags">${b.tags.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`;
     if (b.kv) return `<dl class="kv">${b.kv.map(([k, v]) => `<dt>${esc(k)}</dt><dd>${v && v.href ? `<a href="${esc(v.href)}" target="_blank" rel="noopener">${esc(v.text)}</a>` : esc(v)}</dd>`).join('')}</dl>`;
-    if (b.loot) return `<ul class="loot">${b.loot.map(i => `<li><h3>${i.href ? `<a href="${esc(i.href)}" target="_blank" rel="noopener">${esc(i.t)}</a>` : esc(i.t)}</h3><p>${esc(i.d)}</p>${i.tags ? `<ul class="tags">${i.tags.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ul>`;
+    if (b.loot) return `<ol class="loot">${b.loot.map(i => `<li><div class="loot-head"><h3>${i.href ? `<a href="${esc(i.href)}" target="_blank" rel="noopener">${esc(i.t)}</a>` : esc(i.t)}</h3>${i.k ? `<span class="kind">${esc(i.k)}</span>` : ''}</div><p>${esc(i.d)}</p>${i.tags ? `<ul class="tags">${i.tags.map(t => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}</li>`).join('')}</ol>`;
     return '';
   }).join('');
 }
@@ -63,7 +63,7 @@ fetch(ASSETS + 'CREDITS.md').then(r => r.ok ? r.text() : '').then(t => {
   creditsHTML = `<details class="credits"><summary>사용한 에셋과 출처 (${lines.length})</summary><p>모델·효과음·음악은 Patch 에셋 라이브러리에서 가져온 CC0 / CC BY 4.0 작품입니다. 전체 문구는 assets/CREDITS.md에 있습니다.</p><ul>${short.join('')}</ul></details>`;
 }).catch(() => {});
 
-$('#tKicker').textContent = `${PROFILE.name} · ${PROFILE.role}`;
+$('#tName').textContent = PROFILE.name; $('#tRole').textContent = PROFILE.role;
 $('#tLead').textContent = PROFILE.lead;
 $('#whoName').textContent = PROFILE.name;
 
@@ -75,6 +75,7 @@ function openJournal(all) {
   const n = save.opened.length, total = PROFILE.realms.length;
   $('#journalSheet').innerHTML =
     `<header><div><span class="label">${esc(PROFILE.role)}</span><h2>${esc(PROFILE.name)}의 일지</h2></div></header>` +
+    `<nav class="jnav" aria-label="기록 바로가기">${PROFILE.realms.map(r => `<button data-go="${r.id}">${esc(r.label)}</button>`).join('')}</nav>` +
     PROFILE.realms.map(r => {
       const open = revealAll || save.opened.includes(r.id);
       return `<section id="sec-${r.id}" class="realm-block${open ? '' : ' locked'}"><span class="label">${esc(r.label)} · ${esc(r.place)}</span>` +
@@ -86,6 +87,7 @@ function openJournal(all) {
   $('#journal').hidden = false; $('#title').hidden = true;
   $('#journal').scrollTop = 0;
   const a = $('#jAll'); if (a) a.onclick = () => openJournal(true);
+  document.querySelectorAll('.jnav button').forEach(b => { b.onclick = () => { const el = document.getElementById('sec-' + b.dataset.go); if (el) el.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'start' }); }; });
   $('#jClose').onclick = closeJournal;
   $('#jClose').focus({ preventScroll: true });
 }
@@ -143,7 +145,7 @@ const SPECTRAL = new T.Color(0x5fe8c8), EMBER = new T.Color(0xff8a3c);
    ===================================================================== */
 const MODELS = ['Barbarian', 'Skeleton_Warrior', 'Skeleton_Minion', 'Skeleton_Mage', 'axe_1handed', 'Skeleton_Blade', 'Skeleton_Axe', 'Skeleton_Staff', 'Skeleton_Shield_Large_A',
   'arch', 'crypt', 'fence', 'fence_broken', 'fence_pillar', 'grave_A', 'grave_A_destroyed', 'grave_B', 'gravemarker_A', 'gravemarker_B', 'gravestone', 'lantern_standing', 'post_lantern', 'post_skull', 'pillar', 'plaque_candles', 'shrine', 'shrine_candles', 'skull', 'skull_candle', 'ribcage', 'bone_A', 'bone_C', 'coffin_decorated', 'pumpkin_orange_jackolantern', 'pumpkin_orange', 'tree_dead_large', 'tree_dead_medium', 'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_yellow_large', 'tree_pine_yellow_medium', 'path_A', 'path_B', 'path_C', 'candle_triple', 'floor_dirt_grave',
-  'Tree_1_A_Color1', 'Tree_2_A_Color1', 'Tree_3_A_Color1', 'Tree_4_A_Color1', 'Rock_1_A_Color1', 'Rock_1_D_Color1', 'Rock_2_A_Color1', 'Rock_3_A_Color1', 'Rock_3_F_Color1', 'Bush_1_A_Color1', 'Bush_2_A_Color1', 'Bush_4_A_Color1', 'Grass_1_A_Color1', 'Grass_1_C_Color1', 'Grass_2_B_Color1', 'campfire_logs', 'campfire_bricks'];
+  'Rock_1_A_Color1', 'Rock_1_D_Color1', 'Rock_2_A_Color1', 'Rock_3_A_Color1', 'Rock_3_F_Color1', 'Bush_1_A_Color1', 'Bush_2_A_Color1', 'Bush_4_A_Color1', 'Grass_1_A_Color1', 'Grass_1_C_Color1', 'Grass_2_B_Color1', 'campfire_logs', 'campfire_bricks'];
 const SOUNDS = ['chop', 'knifeSlice', 'knifeSlice2', 'drawKnife1', 'metalClick', 'metalLatch', 'cloth1', 'bookOpen', 'handleCoins', 'footstep00', 'footstep_grass_000', 'impactMetal_heavy_000', 'impactPlate_heavy_000', 'impactPunch_heavy_000', 'impactPunch_medium_000', 'impactSoft_heavy_000', 'impactWood_heavy_000', 'impactBell_heavy_000', 'impactMining_000', 'dark_hallway', 'epic_boss_battle'];
 const M = {}, CLIPS = {}, AUDIO_RAW = {}, BUF = {};
 const loader = new GLTFLoader();
@@ -288,7 +290,8 @@ function buildWorld() {
   });
   // forest
   {
-    const kinds = ['tree_pine_orange_large', 'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_orange_medium', 'tree_pine_yellow_large', 'tree_pine_yellow_medium', 'Tree_1_A_Color1', 'Tree_2_A_Color1', 'Tree_3_A_Color1', 'Tree_4_A_Color1', 'tree_dead_large', 'tree_dead_medium'];
+    // palette lock: autumn pines and dead trees only, so the forest stays in the ember / spectral range
+    const kinds = ['tree_pine_orange_large', 'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_orange_medium', 'tree_pine_yellow_large', 'tree_pine_yellow_medium', 'tree_pine_yellow_medium', 'tree_dead_large', 'tree_dead_medium'];
     const spots = [];
     for (let i = 0; i < 1400 && spots.length < 230; i++) {
       const a = rnd() * 6.283, d = 11 + rnd() * 78, x = Math.cos(a) * d, z = Math.sin(a) * d;
@@ -945,6 +948,7 @@ function startGame() {
   $('#title').hidden = true; $('#journal').hidden = true; $('#hud').hidden = false; $('#touch').hidden = !TOUCH;
   state = 'play'; refreshQuest(); initAudio(); startBlend(2);
   hero.play('Sit_Floor_StandUp', { once: true, fade: 0.1 }); P.lock = (CLIPS.Sit_Floor_StandUp ? CLIPS.Sit_Floor_StandUp.duration : 1) * 0.9;
+  setTimeout(() => $('#keys').classList.add('dim'), 20000);
   toast(save.opened.length ? '여정을 이어간다' : '푸른 빛기둥을 따라가라', TOUCH ? '왼쪽을 끌어 이동, 오른쪽을 끌어 둘러보기' : '클릭 베기 · 우클릭 던지기 · Space 구르기', 5.5);
 }
 $('#btnStart').onclick = startGame;
