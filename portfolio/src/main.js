@@ -359,7 +359,13 @@ class Actor {
     });
     scene.add(this.root);
   }
-  hold(model, left) { const w = M[model].clone(); w.traverse(c => { if (c.isMesh) c.castShadow = SHADOWS; }); (left ? this.handL : this.handR).add(w); return w; }
+  hold(model, left) {
+    const w = M[model].clone(); w.traverse(c => { if (c.isMesh) c.castShadow = SHADOWS; });
+    // The library re-centres each weapon on its base, which puts the hand on the butt of the handle with the head hanging down.
+    // Move the grip back into the fist and tip the head up.
+    if (!left && w.children[0]) { w.children[0].position.set(0, 0, 0); w.rotation.z = 0.95; }
+    (left ? this.handL : this.handR).add(w); return w;
+  }
   play(name, o) {
     o = o || {};
     const clip = CLIPS[name]; if (!clip) return null;
@@ -953,4 +959,4 @@ Promise.all([...MODELS.map(loadModel), ...SOUNDS.map(loadSound)]).then(() => {
   console.error(err); failed = true;
   $('#btnStart').textContent = '불러오지 못했습니다'; $('#tLead').textContent = '에셋을 불러오지 못했습니다. 새로고침하거나 "게임 없이 바로 보기"를 눌러 주세요. (' + String(err && err.message || err).slice(0, 120) + ')';
 });
-window.__saga = { get hero() { return hero; }, CLIPS, P, G, enemies, sites, runes, bolts, wave, save, get state() { return state; }, get ready() { return ready; }, throwAxe, slash, nova, openPanel, hitEnemy };
+window.__saga = { get hero() { return hero; }, get handAxe() { return handAxe; }, set yaw(v) { yaw = v; }, set pitch(v) { pitch = v; }, CLIPS, P, G, enemies, sites, runes, bolts, wave, save, get state() { return state; }, get ready() { return ready; }, throwAxe, slash, nova, openPanel, hitEnemy };
