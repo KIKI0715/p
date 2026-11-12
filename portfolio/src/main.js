@@ -149,9 +149,21 @@ const M = {}, CLIPS = {}, AUDIO_RAW = {}, BUF = {};
 const loader = new GLTFLoader();
 let loaded = 0;
 const total = MODELS.length + SOUNDS.length;
-const tick = () => { loaded++; if (!ready) $('#btnStart').textContent = `불러오는 중 ${Math.round(loaded / total * 100)}%`; };
-const MODEL_EXT = import.meta.env.VITE_MODEL_EXT || '.glb';   // the hosted preview serves models as embedded-glTF .json
-const loadModel = name => loader.loadAsync(ASSETS + 'models/' + name + MODEL_EXT).then(g => { M[name] = g.scene; if (g.animations.length) g.animations.forEach(c => { CLIPS[c.name] = c; }); tick(); });
+let failed = false;
+const tick = () => { loaded++; if (!ready && !failed) $('#btnStart').textContent = `불러오는 중 ${Math.round(loaded / total * 100)}%`; };
+const MODEL_EXT = import.meta.env.VITE_MODEL_EXT || '.glb';
+const onModel = (name, g) => { M[name] = g.scene; g.animations.forEach(c => { CLIPS[c.name] = c; }); tick(); };
+// The hosted preview can't serve .glb, so there each model ships as base64 inside a .json file and is parsed
+// from memory. Textures then go through <img> rather than fetch(), which that host's policy blocks for blob: URLs.
+function parseB64(b64) {
+  const bin = atob(b64), buf = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const cib = self.createImageBitmap; try { self.createImageBitmap = undefined; } catch (e) {}
+  const pr = loader.parseAsync(buf.buffer, ''); try { self.createImageBitmap = cib; } catch (e) {}
+  return pr;
+}
+const loadModel = name => (MODEL_EXT === '.json'
+  ? fetch(ASSETS + 'models/' + name + '.json').then(r => { if (!r.ok) throw new Error(name + ' ' + r.status); return r.json(); }).then(j => parseB64(j.glb))
+  : loader.loadAsync(ASSETS + 'models/' + name + '.glb')).then(g => onModel(name, g));
 // audio is fetched up front but decoded only after the first click, when an AudioContext is allowed
 const loadSound = name => fetch(ASSETS + 'audio/' + name + '.mp3').then(r => r.arrayBuffer()).then(b => { AUDIO_RAW[name] = b; tick(); }).catch(() => tick());
 
@@ -938,7 +950,7 @@ Promise.all([...MODELS.map(loadModel), ...SOUNDS.map(loadSound)]).then(() => {
   const b = $('#btnStart'); b.disabled = false; b.textContent = save.opened.length ? '여정 이어가기' : '여정 시작';
   hashRoute();
 }).catch(err => {
-  console.error(err);
-  $('#btnStart').textContent = '불러오지 못했습니다'; $('#tLead').textContent = '에셋을 불러오지 못했습니다. 새로고침하거나 "게임 없이 바로 보기"를 눌러 주세요.';
+  console.error(err); failed = true;
+  $('#btnStart').textContent = '불러오지 못했습니다'; $('#tLead').textContent = '에셋을 불러오지 못했습니다. 새로고침하거나 "게임 없이 바로 보기"를 눌러 주세요. (' + String(err && err.message || err).slice(0, 120) + ')';
 });
 window.__saga = { get hero() { return hero; }, CLIPS, P, G, enemies, sites, runes, bolts, wave, save, get state() { return state; }, get ready() { return ready; }, throwAxe, slash, nova, openPanel, hitEnemy };
