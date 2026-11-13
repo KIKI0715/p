@@ -471,7 +471,11 @@ function buildActors() {
   hero.root.position.set(P.x, 0, P.z); hero.root.rotation.y = P.face + Math.PI;
   hero.play('Sit_Floor_Idle', { fade: 0 });
   // the thrown axe: spins out, comes back to the hand
-  fly = new T.Group(); flyIn = M.axe_1handed.clone(); flyIn.scale.setScalar(1.45); flyIn.position.y = -0.35; const piv = new T.Group(); piv.add(flyIn); fly.add(piv); fly.userData.piv = piv;
+  fly = new T.Group(); flyIn = M.axe_1handed.clone(); flyIn.scale.setScalar(1.45);
+  // Tumble in the plane of the blade: turn the axe so its flat side faces sideways and its edge faces the direction
+  // of travel, then spin about the sideways axis. The offset puts the spin centre near the head, where the weight is.
+  if (flyIn.children[0]) flyIn.children[0].position.set(0, 0, 0);
+  flyIn.rotation.y = Math.PI / 2; flyIn.position.set(0, -0.49, -0.16); const piv = new T.Group(); piv.add(flyIn); fly.add(piv); fly.userData.piv = piv;
   fly.add(glow(0xff8a3c, 2.2, 0.5)); const fl = new T.PointLight(0xff8a3c, 10, 9, 1.8); fly.add(fl); fly.visible = false; scene.add(fly);
   trail = new Trail(16, 0xffc890);
   hero.root.rotation.order = 'YXZ';
