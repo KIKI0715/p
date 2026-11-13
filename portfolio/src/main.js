@@ -89,11 +89,13 @@ function openJournal(all) {
     `<section class="realm-block"><span class="label">성장 · 레벨 ${ready ? lvl() : 1}</span><ol class="journey evo">${EVO.map(v => `<li class="${ready && has(v.lv) ? 'got' : ''}"><b>${esc(v.name)}</b><span>Lv ${v.lv} · ${esc(v.d)}</span></li>`).join('')}</ol></section>` +
     `<p class="inspired">이 페이지의 아이디어와 연출은 God of War(2018)와 God of War Ragnarök에서 영감을 받았습니다. 캐릭터, 세계, 에셋은 그와 별개로 만든 것입니다.</p>` + creditsHTML +
     `<div class="foot"><small>깨운 기록 ${n} / ${total} · 기술 룬 ${save.runes.length} / ${ALL_TAGS.length}</small><span style="display:flex;gap:10px;flex-wrap:wrap">` +
+    (save.opened.length || save.xp ? `<button class="btn ghost" data-reset>처음부터 다시</button>` : '') +
     (revealAll || n === total ? '' : `<button class="btn ghost" id="jAll">전부 펼쳐 보기</button>`) +
     `<button class="btn" id="jClose">${returnState === 'play' ? '여정으로 돌아가기' : (noGL || !ready ? '닫기' : '여정 시작')}</button></span></div>`;
   $('#journal').hidden = false; $('#title').hidden = true;
   $('#journal').scrollTop = 0;
   const a = $('#jAll'); if (a) a.onclick = () => openJournal(true);
+  wireReset();
   document.querySelectorAll('.jnav button').forEach(b => { b.onclick = () => { const el = document.getElementById('sec-' + b.dataset.go); if (el) el.scrollIntoView({ behavior: REDUCED ? 'auto' : 'smooth', block: 'start' }); }; });
   $('#jClose').onclick = closeJournal;
   $('#jClose').focus({ preventScroll: true });
@@ -103,6 +105,16 @@ function closeJournal() {
   if (returnState === 'play') { state = 'play'; return; }
   if (noGL || !ready) { state = 'title'; $('#title').hidden = false; return; }
   startGame();
+}
+// restart: wipes saved progress. Asks once more in place, since browsers' confirm dialogs do not show here.
+function wireReset() {
+  document.querySelectorAll('[data-reset]').forEach(b => {
+    b.onclick = () => {
+      if (b.dataset.armed) { try { localStorage.removeItem('emberfall-v2'); } catch (e) {} save.opened = []; save.runes = []; save.xp = 0; location.reload(); return; }
+      b.dataset.armed = '1'; b.textContent = '한 번 더 누르면 기록, 룬, 레벨이 모두 지워집니다'; b.style.borderColor = 'var(--blood)';
+      setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = '처음부터 다시'; b.style.borderColor = ''; } }, 4500);
+    };
+  });
 }
 $('#btnSkip').onclick = () => openJournal(true);
 $('#btnJournal').onclick = () => openJournal(false);
@@ -338,8 +350,8 @@ function buildWorld() {
     const beam = new T.Mesh(new T.CylinderGeometry(0.25, 0.7, 80, 6, 1, true), beamMat); beam.position.y = 42; g.add(beam);
     const light = new T.PointLight(0x5fe8c8, 22, 18, 1.6); light.position.set(fx * 1.5, 3, fz * 1.5); g.add(light);
     // while the path is closed, a veil of mist holds the whole graveyard
-    const veil = new T.Mesh(new T.IcosahedronGeometry(VEIL, 2), new T.MeshBasicMaterial({ color: 0x9fb6d8, transparent: true, opacity: 0.1, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
-    veil.position.set(fx * 3, 0, fz * 3); veil.add(new T.Mesh(veil.geometry, new T.MeshBasicMaterial({ color: 0xb8c8e6, transparent: true, opacity: 0.16, wireframe: true, depthWrite: false, fog: false }))); g.add(veil);
+    const veil = new T.Mesh(new T.IcosahedronGeometry(VEIL, 2), new T.MeshBasicMaterial({ color: 0x9fb6d8, transparent: true, opacity: 0.055, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
+    veil.position.set(fx * 3, 0, fz * 3); veil.add(new T.Mesh(veil.geometry, new T.MeshBasicMaterial({ color: 0xb8c8e6, transparent: true, opacity: 0.09, wireframe: true, depthWrite: false, fog: false }))); g.add(veil);
     sites.push({ r, x, z, rad: cfg.rad, top, toC, fx, fz, px, pz, g, glyph, halo, dome, beam, beamMat, light, lamps, veil, vx: x + fx * 3, vz: z + fz * 3, locked: false, guards: [], sealed: true, opened: false, hold: 0 });
   });
   // forest
@@ -492,8 +504,9 @@ class Actor {
   tint(color, k) { for (const m of this.mats) { m.emissive.copy(color); m.emissiveIntensity = k; } }
 }
 
-const P = { x: 0, z: 2.9, face: 0, hp: 100, inv: 0, dodge: 0, dx: 0, dz: 0, cd: 0, lock: 0, dead: false, healed: false, rage: 0, raged: false, combo: 0, comboT: 0, swing: 0, swingDur: 1, hitDone: true, queued: false, yawB: Math.PI, tw: 0, pitchB: 0, chestTw: 0, lunge: 0, lungeSp: 7, throwT: 0, step: 0, moving: false, sprint: false, atk: null, whooshed: true, idleT: 0, beat: 0 };
-let hero = null, pencil = null, handSquare = null, fly = null, flyIn = null, trail = null;
+const P = { x: 0, z: 2.9, face: 0, hp: 100, inv: 0, dodge: 0, dx: 0, dz: 0, cd: 0, lock: 0, dead: false, healed: false, rage: 0, raged: false, combo: 0, comboT: 0, swing: 0, swingDur: 1, hitDone: true, queued: false, yawB: Math.PI, tw: 0, pitchB: 0, chestTw: 0, tool: 'pencil', swapT: 0, swapTo: '', swapThen: null, swapArg: false, lunge: 0, lungeSp: 7, throwT: 0, step: 0, moving: false, sprint: false, atk: null, whooshed: true, idleT: 0, beat: 0 };
+let hero = null, pencil = null, pencilBack = null, handSquare = null, handSq = null, pxP = null, pxS = null, fly = null, flyIn = null, trail = null;
+const SWAP = 0.3, swA = new T.Vector3(), swB = new T.Vector3(), swQa = new T.Quaternion(), swQb = new T.Quaternion();
 const qTw = new T.Quaternion(), UP = new T.Vector3(0, 1, 0);
 const camF = new T.Vector3(0, 0, 2.9), tipV = new T.Vector3(), baseV = new T.Vector3();
 let lean = 0, flyWhoosh = 0;
@@ -541,7 +554,12 @@ function buildActors() {
   // carried across the back, where the model's quiver used to be
   hero.root.traverse(o => { if (o.isMesh && /Quiver/i.test(o.name)) o.visible = false; });
   handSquare = makeSquare(); handSquare.scale.setScalar(1.25); handSquare.rotation.set(0, 0, 0.75); handSquare.position.set(0.02, 0.08, -0.3);
-  (hero.chest || hero.root).add(handSquare); handSquare.visible = can.square;
+  (hero.chest || hero.root).add(handSquare);
+  // each tool has a place in the hand and a place on the back; changing tools carries one over the shoulder each way
+  handSq = makeSquare(); handSq.scale.setScalar(1.3); handSq.rotation.z = Math.PI / 2; handSq.position.set(0, 0.24, 0); hero.handR.add(handSq);
+  pencilBack = pencil.clone(); pencilBack.position.set(-0.04, 0.12, -0.3); pencilBack.rotation.set(0, 0, 2.5); (hero.chest || hero.root).add(pencilBack);
+  pxP = pencil.clone(); pxS = makeSquare(); pxP.visible = pxS.visible = false; scene.add(pxP, pxS);
+  setTools();
   hero.root.position.set(P.x, 0, P.z); hero.root.rotation.y = P.face + Math.PI;
   hero.play('Sit_Floor_Idle', { fade: 0 });
   // thrown, it lies flat and spins about its centre, banked a little so the camera sees the triangle
@@ -586,7 +604,7 @@ function refreshLocks(announce) {
     s.lamps.forEach(l => { l.visible = !s.locked; });
     if (announce && was && !s.locked) { burst(s.vx, 3, s.vz, 120, 9, 1.6, 0.6, 0.75, 1, 1); s.opening = true; }
   });
-  if (handSquare) handSquare.visible = can.square && G.state === 'held';
+  setTools();
   $('#rageWrap').hidden = !can.ship;
   const k = $('#keys'); if (k) k.innerHTML = keysHTML();
 }
@@ -602,6 +620,35 @@ function announceUnlock(id) {
   if (i === 0) toast('삼각자를 얻었다', (TOUCH ? '던지기 버튼으로 던지고 다시 눌러 불러들입니다' : '우클릭으로 던지고, 다시 눌러 불러들입니다') + ` · ${dir} 길이 열렸다`, 6.5);
   else if (i === 1) toast('출시를 익혔다', (TOUCH ? '몰입이 가득 차면 출시 버튼' : '몰입이 가득 차면 R') + `으로 주변을 휩씁니다 · ${dir} 길이 열렸다`, 6.5);
   else if (next) toast('마지막 길이 열렸다', `${dir} 성에서 해골왕이 기다린다`, 6);
+}
+function setTools() {
+  if (!pencil) return;
+  const sw = P.swapT > 0, sq = P.tool === 'square', held = G.state === 'held';
+  pencil.visible = !sw && !sq; pencilBack.visible = !sw && sq;
+  handSq.visible = !sw && sq && held && can.square; handSquare.visible = !sw && !sq && held && can.square;
+  pxP.visible = pxS.visible = sw;
+}
+// put the pencil away and take the set square, or the reverse; `then` is what the hero was about to do
+function swapTool(to, then, arg) {
+  if (P.swapT > 0 || P.tool === to) return;
+  P.swapT = SWAP; P.swapTo = to; P.swapThen = then; P.swapArg = arg; P.lock = Math.max(P.lock, SWAP); P.swing = 0; P.queued = false;
+  pxP.scale.copy(pencil.scale); pxS.scale.setScalar(1.28);
+  setTools(); sfx('cloth1', 0.28, 1.3); whoosh(0.2, 500, 1400, 0.12, 1.5);
+}
+function carry(px, from, to, e, lift, side) {
+  from.getWorldPosition(swA); to.getWorldPosition(swB); from.getWorldQuaternion(swQa); to.getWorldQuaternion(swQb);
+  px.position.lerpVectors(swA, swB, e); px.position.y += lift; px.position.x += right.x * side; px.position.z += right.z * side; px.quaternion.copy(swQa).slerp(swQb, e);
+}
+function updateSwap(dt) {
+  if (P.swapT <= 0) return;
+  P.swapT -= dt; const k = clamp(1 - P.swapT / SWAP, 0, 1), e = k * k * (3 - 2 * k), toSq = P.swapTo === 'square', lift = Math.sin(Math.PI * k) * 0.42;
+  carry(pxP, toSq ? pencil : pencilBack, toSq ? pencilBack : pencil, e, lift, 0.12 * Math.sin(Math.PI * k));
+  carry(pxS, toSq ? handSquare : handSq, toSq ? handSq : handSquare, e, lift * 0.8, -0.12 * Math.sin(Math.PI * k));
+  P.chestTw = Math.sin(Math.PI * k) * (toSq ? 0.55 : -0.55);   // the shoulders turn into the reach
+  if (P.swapT <= 0) {
+    P.swapT = 0; P.tool = P.swapTo; P.lock = 0; setTools(); sfx('metalClick', 0.3, 1.2);
+    const then = P.swapThen; P.swapThen = null; if (then === 'throw') throwAxe(P.swapArg); else if (then === 'slash') slash();
+  }
 }
 function lightSite(s, withFx) {
   s.opened = true; s.sealed = false; s.dome.visible = false;
@@ -769,7 +816,7 @@ const EVO = [
   { lv: 8, name: '큰 출시', d: '출시가 더 넓은 범위를 휩씁니다' }
 ];
 const comboLen = () => (has(3) ? 4 : has(2) ? 3 : 2);
-function applyEvo() { if (pencil) pencil.scale.setScalar(has(4) ? 3.8 : 3.1); if (pencil) pencil.position.y = has(4) ? 0.66 : 0.52; }
+function applyEvo() { if (pencil) pencil.scale.setScalar(has(4) ? 3.8 : 3.1); if (pencilBack) pencilBack.scale.copy(pencil.scale); if (pencil) pencil.position.y = has(4) ? 0.66 : 0.52; }
 function addXP(n) {
   const before = lvl(); save.xp += n; persist(); refreshQuest();
   if (lvl() > before) { chime([784, 987.8, 1174.7, 1568], 0.07, 0.09); applyEvo(); const e = EVO.find(v => v.lv === lvl()); toast('레벨 ' + lvl() + (e ? ' · ' + e.name : ''), e ? e.d : '여정이 깊어졌다', 5); if (e && !REDUCED) burst(P.x, 1.2, P.z, 60, 6, 1.2, 1, 0.8, 0.4, 1); }
@@ -805,6 +852,7 @@ function slash() {
   if (G.state !== 'held') { if (G.state === 'out') { G.state = 'back'; G.hit.clear(); } return; }
   if (P.swing > 0) { if (P.swing < P.swingDur * 0.6) P.queued = true; return; }
   if (P.throwT > 0) return;
+  if (P.tool !== 'pencil') { swapTool('pencil', 'slash'); return; }
   let atk;
   if (P.sprint && P.moving && P.comboT <= 0) atk = DASH;   // running in: a lunging stab
   else { P.combo = P.comboT > 0 ? (P.combo + 1) % comboLen() : 0; atk = ATTACKS[P.combo]; }
@@ -824,6 +872,7 @@ function throwAxe(auto) {
   if (!can.square) { if (!P.hintT || time - P.hintT > 5) { P.hintT = time; toast('아직 던질 것이 없다', '첫 기록을 깨우면 삼각자를 얻습니다', 2.6); } return; }
   if (G.state === 'out') { G.state = 'back'; G.hit.clear(); return; }
   if (G.state !== 'held' || P.cd > 0 || P.swing > 0 || P.throwT > 0) return;
+  if (G.state === 'held' && P.tool !== 'square') { if (P.cd <= 0 && P.swing <= 0 && P.throwT <= 0) swapTool('square', 'throw', auto); return; }
   let target = null, best = auto ? 0.5 : 0.955;   // about 17 degrees of help around the crosshair
   ray.setFromCamera(auto ? tmp2.set(0, 0, 0) : aim, camera);
   for (const e of enemies) {
@@ -866,7 +915,7 @@ function hurtPlayer(n) {
     P.hp = 0; P.dead = true; P.swing = 0; hero.play('Death_A', { once: true });
     setTimeout(() => { $('#fade').style.opacity = 1; }, 900);
     setTimeout(() => {
-      P.x = 0; P.z = 3; camF.set(0, 0, 3); P.tw = 0; P.pitchB = 0; hero.root.position.y = 0; P.hp = 100; P.dead = false; P.inv = 2; yaw = 0; P.face = 0; G.state = 'held'; fly.visible = false; handSquare.visible = can.square;
+      P.x = 0; P.z = 3; camF.set(0, 0, 3); P.tw = 0; P.pitchB = 0; hero.root.position.y = 0; P.hp = 100; P.dead = false; P.inv = 2; yaw = 0; P.face = 0; G.state = 'held'; fly.visible = false; P.tool = 'pencil'; P.swapT = 0; setTools();
       bolts.forEach(b => { if (b.live) killBolt(b); }); wave.live = false; wave.m.material.opacity = 0;
       enemies.forEach(e => { if (!e.dead && e.state !== 'dormant') { e.x = e.hx; e.z = e.hz; e.state = 'idle'; } });
       hero.play('Idle_A', { fade: 0 }); $('#fade').style.opacity = 0; toast('모닥불 곁에서 다시 일어섰다', '해골의 눈이 붉게 빛나면 Space로 대시해 피하세요');
@@ -931,8 +980,9 @@ function showEnding() {
   hero.play('Cheering');
   $('#panelSheet').innerHTML = `<header><div><span class="label">${esc(PROFILE.name)} · ${esc(PROFILE.role)}</span><h2>사가 완성</h2></div></header><p>네 개의 기록을 모두 깨웠습니다. 여기까지 와 주셔서 고맙습니다.</p>` +
     `<dl class="stats"><div><dt>걸린 시간</dt><dd>${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}</dd></div><div><dt>쓰러뜨린 수호자</dt><dd>${save.kills || 0}</dd></div><div><dt>기술 룬</dt><dd>${save.runes.length} / ${ALL_TAGS.length}</dd></div></dl>` +
-    (c ? blocksHTML(c.blocks) : '') + `<div class="foot"><button class="btn ghost" id="eJournal">일지 전체 보기</button><button class="btn" id="pClose">계속 탐험하기</button></div>`;
+    (c ? blocksHTML(c.blocks) : '') + `<div class="foot"><span style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" id="eJournal">일지 전체 보기</button><button class="btn ghost" data-reset>처음부터 다시</button></span><button class="btn" id="pClose">계속 탐험하기</button></div>`;
   $('#panel').hidden = false; $('#panel').scrollTop = 0;
+  wireReset();
   $('#pClose').onclick = closePanel; $('#eJournal').onclick = () => { $('#panel').hidden = true; state = 'play'; openJournal(true); };
   $('#pClose').focus({ preventScroll: true });
 }
@@ -1014,6 +1064,7 @@ function updatePlayer(dt) {
   fill.position.set(P.x, 2.4, P.z);
   fovKick += ((sprint ? 5 : 0) + (P.swing > 0 ? 3.5 : 0) - fovKick) * Math.min(1, dt * 5);
   if (Math.hypot(P.x, P.z) < 4.5 && P.hp < 100 && !P.dead) { P.hp = Math.min(100, P.hp + 30 * dt); if (!P.healed) { P.healed = true; toast('모닥불이 상처를 덮는다', '체력은 여기서 회복됩니다'); } }
+  updateSwap(dt);
   $('#hpBar').style.transform = `scaleX(${P.hp / 100})`;
   $('#rageBar').style.transform = `scaleX(${P.rage / 100})`; $('#rageWrap').classList.toggle('full', P.rage >= 100); $('#tNova').hidden = P.rage < 100 || !can.ship; $('#tThrow').hidden = !can.square;
 }
@@ -1021,7 +1072,7 @@ function updateAxe(dt) {
   G.spin += dt * 24;
   if (G.pending !== null) {   // release point of the throw animation
     G.pending -= dt;
-    if (G.pending <= 0) { G.pending = null; if (!P.dead) { handPos(G.pos); G.state = 'out'; G.dist = 0; G.hit.clear(); handSquare.visible = false; fly.visible = true; whoosh(0.28, 380, 1700, 0.42, 1.1); flyWhoosh = 0.1; } }
+    if (G.pending <= 0) { G.pending = null; if (!P.dead) { handPos(G.pos); G.state = 'out'; G.dist = 0; G.hit.clear(); fly.visible = true; setTools(); whoosh(0.28, 380, 1700, 0.42, 1.1); flyWhoosh = 0.1; } }
   }
   if (G.state !== 'held') {
     if (G.state === 'out') {
@@ -1035,7 +1086,7 @@ function updateAxe(dt) {
       if (turn) { G.state = 'back'; G.hit.clear(); burst(G.pos.x, G.pos.y, G.pos.z, 10, 3, 0.4, 1, 0.6, 0.2, 6); sfx('impactMetal_heavy_000', 0.3, 1.2, G.pos); }
     } else {
       handPos(tmp); tmp.sub(G.pos); const d = tmp.length();
-      if (d < 0.9) { G.state = 'held'; fly.visible = false; handSquare.visible = true; sfx('metalClick', 0.5); thump(150, 0.08, 0.3); hero.play('Hit_B', { once: true, dur: 0.3, fade: 0.04 }); P.lock = Math.max(P.lock, 0.12); }
+      if (d < 0.9) { G.state = 'held'; fly.visible = false; setTools(); sfx('metalClick', 0.5); thump(150, 0.08, 0.3); hero.play('Hit_B', { once: true, dur: 0.3, fade: 0.04 }); P.lock = Math.max(P.lock, 0.12); }
       else { G.dir.copy(tmp).divideScalar(d); G.pos.addScaledVector(G.dir, Math.min(d, 42 * dt)); }
     }
     if (G.state !== 'held') {
@@ -1241,6 +1292,7 @@ Promise.all([...MODELS.map(loadModel), ...SOUNDS.map(loadSound)]).then(() => {
   buildWorld(); buildActors(); buildHud(); refreshQuest();
   ready = true;
   const b = $('#btnStart'); b.disabled = false; b.textContent = save.opened.length ? '여정 이어가기' : '여정 시작';
+  $('#btnReset').hidden = !(save.opened.length || save.xp); wireReset();
   hashRoute();
 }).catch(err => {
   console.error(err); failed = true;
