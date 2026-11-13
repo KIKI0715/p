@@ -734,7 +734,7 @@ function hurtPlayer(n) {
       P.x = 0; P.z = 3; camF.set(0, 0, 3); P.hp = 100; P.dead = false; P.inv = 2; yaw = 0; P.face = 0; G.state = 'held'; fly.visible = false; handAxe.visible = true;
       bolts.forEach(b => { if (b.live) killBolt(b); }); wave.live = false; wave.m.material.opacity = 0;
       enemies.forEach(e => { if (!e.dead && e.state !== 'dormant') { e.x = e.hx; e.z = e.hz; e.state = 'idle'; } });
-      hero.play('Idle_A', { fade: 0 }); $('#fade').style.opacity = 0; toast('모닥불 곁에서 다시 일어섰다', '해골의 눈이 붉게 빛나면 Space로 구르세요');
+      hero.play('Idle_A', { fade: 0 }); $('#fade').style.opacity = 0; toast('모닥불 곁에서 다시 일어섰다', '해골의 눈이 붉게 빛나면 Space로 대시해 피하세요');
     }, 1900);
   } else if (P.swing <= 0 && P.dodge <= 0 && P.lock <= 0) { hero.play('Hit_A', { once: true, dur: 0.45, fade: 0.05 }); P.lock = 0.28; }
 }
@@ -749,7 +749,7 @@ function hitEnemy(e, n, dx, dz, kb, stun) {
   sfx('impactPunch_heavy_000', 0.6, big ? 0.85 : 1, e); sfx('impactWood_heavy_000', 0.4, 1.2 + Math.random() * 0.5, e); thump(big ? 80 : 105, 0.13, 0.4, e);
   if (big) sfx('impactPlate_heavy_000', 0.45, 0.8, e);
   if (e.boss && !e.p2 && e.hp > 0 && e.hp <= e.max / 2) {
-    e.p2 = true; e.speed = 3.1; e.state = 'taunt'; e.t = 0; toast('해골왕이 격노한다', '땅을 내리치면 고리가 퍼집니다. 구르기로 뚫으세요', 4.5);
+    e.p2 = true; e.speed = 3.1; e.state = 'taunt'; e.t = 0; toast('해골왕이 격노한다', '땅을 내리치면 고리가 퍼집니다. 대시로 뚫으세요', 4.5);
     [-1, 1].forEach(s => { const w = makeEnemy(e.site, e.x - e.site.x + s * 3.5, e.z - e.site.z, 'minion', true); dust(w.x, w.z, 18, 4); rattle(w, 6); });
     growl(e);
   }
@@ -1070,7 +1070,7 @@ function startGame() {
   state = 'play'; refreshQuest(); initAudio(); startBlend(2); camF.set(P.x, 0, P.z);
   hero.play('Sit_Floor_StandUp', { once: true, fade: 0.1 }); P.lock = (CLIPS.Sit_Floor_StandUp ? CLIPS.Sit_Floor_StandUp.duration : 1) * 0.9;
   setTimeout(() => $('#keys').classList.add('dim'), 20000);
-  toast(save.opened.length ? '여정을 이어간다' : '푸른 빛기둥을 따라가라', TOUCH ? '왼쪽을 끌어 이동, 오른쪽을 끌어 둘러보기' : '클릭 베기 · 우클릭 던지기 · Space 구르기', 5.5);
+  toast(save.opened.length ? '여정을 이어간다' : '푸른 빛기둥을 따라가라', TOUCH ? '왼쪽을 끌어 이동, 오른쪽을 끌어 둘러보기' : '클릭 베기 · 우클릭 던지기 · Space 대시', 5.5);
 }
 $('#btnStart').onclick = startGame;
 
