@@ -52,7 +52,11 @@ const save = { opened: [], xp: 0 };
 try { Object.assign(save, JSON.parse(localStorage.getItem('emberfall-v2') || '{}')); } catch (e) {}
 if (!Array.isArray(save.opened)) save.opened = [];
 if (!Array.isArray(save.runes)) save.runes = [];
-const ALL_TAGS = []; PROFILE.realms.forEach(r => r.blocks.forEach(b => { if (b.tags) b.tags.forEach(t => { if (!ALL_TAGS.includes(t)) ALL_TAGS.push(t); }); }));
+// runes follow PROFILE.journey (the order the skills were learned); without it, the order the tags appear
+const ALL_TAGS = Array.isArray(PROFILE.journey) && PROFILE.journey.length ? PROFILE.journey.map(j => j.tag) : [];
+if (!ALL_TAGS.length) PROFILE.realms.forEach(r => r.blocks.forEach(b => { if (b.tags) b.tags.forEach(t => { if (!ALL_TAGS.includes(t)) ALL_TAGS.push(t); }); }));
+const ORDER = PROFILE.realms.map(r => r.id);   // the records open in this order, one path at a time
+const can = { get hammer() { return save.opened.includes(ORDER[0]); }, get ship() { return save.opened.includes(ORDER[1]); } };
 const persist = () => { try { localStorage.setItem('emberfall-v2', JSON.stringify(save)); } catch (e) {} };
 let state = 'title';           // title | play | cine | panel | journal
 let revealAll = false, returnState = 'title', ready = false, noGL = false;
@@ -80,7 +84,10 @@ function openJournal(all) {
       const open = revealAll || save.opened.includes(r.id);
       return `<section id="sec-${r.id}" class="realm-block${open ? '' : ' locked'}"><span class="label">${esc(r.label)} · ${esc(r.place)}</span>` +
         (open ? `<h3 style="font-size:20px">${esc(r.title)}</h3>${blocksHTML(r.blocks)}` : `<p>아직 깨우지 못한 기록입니다. 나침반의 푸른 표식을 따라가세요.</p>`) + `</section>`;
-    }).join('') + creditsHTML +
+    }).join('') +
+    (PROFILE.journey ? `<section id="sec-journey" class="realm-block"><span class="label">배움의 순서 · 기술 룬</span><ol class="journey">${PROFILE.journey.map(j => `<li class="${revealAll || save.runes.includes(j.tag) ? 'got' : ''}"><b>${esc(j.tag)}</b>${j.when ? `<span>${esc(j.when)}</span>` : ''}</li>`).join('')}</ol></section>` : '') +
+    `<section class="realm-block"><span class="label">성장 · 레벨 ${ready ? lvl() : 1}</span><ol class="journey evo">${EVO.map(v => `<li class="${ready && has(v.lv) ? 'got' : ''}"><b>${esc(v.name)}</b><span>Lv ${v.lv} · ${esc(v.d)}</span></li>`).join('')}</ol></section>` +
+    `<p class="inspired">이 페이지의 아이디어와 연출은 God of War(2018)와 God of War Ragnarök에서 영감을 받았습니다. 캐릭터, 세계, 에셋은 그와 별개로 만든 것입니다.</p>` + creditsHTML +
     `<div class="foot"><small>깨운 기록 ${n} / ${total} · 기술 룬 ${save.runes.length} / ${ALL_TAGS.length}</small><span style="display:flex;gap:10px;flex-wrap:wrap">` +
     (revealAll || n === total ? '' : `<button class="btn ghost" id="jAll">전부 펼쳐 보기</button>`) +
     `<button class="btn" id="jClose">${returnState === 'play' ? '여정으로 돌아가기' : (noGL || !ready ? '닫기' : '여정 시작')}</button></span></div>`;
@@ -143,8 +150,8 @@ const SPECTRAL = new T.Color(0x5fe8c8), EMBER = new T.Color(0xff8a3c);
 /* =====================================================================
    ASSETS
    ===================================================================== */
-const MODELS = ['Barbarian', 'Skeleton_Warrior', 'Skeleton_Minion', 'Skeleton_Mage', 'axe_1handed', 'Skeleton_Blade', 'Skeleton_Axe', 'Skeleton_Staff', 'Skeleton_Shield_Large_A',
-  'arch', 'crypt', 'fence', 'fence_broken', 'fence_pillar', 'grave_A', 'grave_A_destroyed', 'grave_B', 'gravemarker_A', 'gravemarker_B', 'gravestone', 'lantern_standing', 'post_lantern', 'post_skull', 'pillar', 'plaque_candles', 'shrine', 'shrine_candles', 'skull', 'skull_candle', 'ribcage', 'bone_A', 'bone_C', 'coffin_decorated', 'pumpkin_orange_jackolantern', 'pumpkin_orange', 'tree_dead_large', 'tree_dead_medium', 'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_yellow_large', 'tree_pine_yellow_medium', 'path_A', 'path_B', 'path_C', 'candle_triple', 'floor_dirt_grave',
+const MODELS = ['Ranger', 'pencil_B_long', 'hammer', 'building_church_blue', 'building_blacksmith_blue', 'building_market_blue', 'building_castle_blue', 'anvil', 'blueprint', 'Skeleton_Warrior', 'Skeleton_Minion', 'Skeleton_Mage', 'Skeleton_Blade', 'Skeleton_Axe', 'Skeleton_Staff', 'Skeleton_Shield_Large_A',
+  'arch', 'fence', 'fence_broken', 'fence_pillar', 'grave_A', 'grave_A_destroyed', 'grave_B', 'gravemarker_A', 'gravemarker_B', 'gravestone', 'lantern_standing', 'post_lantern', 'post_skull', 'pillar', 'plaque_candles', 'shrine', 'shrine_candles', 'skull', 'skull_candle', 'ribcage', 'bone_A', 'bone_C', 'coffin_decorated', 'pumpkin_orange_jackolantern', 'pumpkin_orange', 'tree_dead_large', 'tree_dead_medium', 'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_yellow_large', 'tree_pine_yellow_medium', 'path_A', 'path_B', 'path_C', 'candle_triple', 'floor_dirt_grave',
   'Rock_1_A_Color1', 'Rock_1_D_Color1', 'Rock_2_A_Color1', 'Rock_3_A_Color1', 'Rock_3_F_Color1', 'Bush_1_A_Color1', 'Bush_2_A_Color1', 'Bush_4_A_Color1', 'Grass_1_A_Color1', 'Grass_1_C_Color1', 'Grass_2_B_Color1', 'campfire_logs', 'campfire_bricks'];
 const SOUNDS = ['metalClick', 'metalLatch', 'cloth1', 'bookOpen', 'footstep_grass_000', 'impactMetal_heavy_000', 'impactPlate_heavy_000', 'impactPunch_heavy_000', 'impactPunch_medium_000', 'impactSoft_heavy_000', 'impactWood_heavy_000', 'impactBell_heavy_000', 'impactMining_000', 'dark_hallway', 'epic_boss_battle'];
 const M = {}, CLIPS = {}, AUDIO_RAW = {}, BUF = {};
@@ -173,25 +180,62 @@ const loadSound = name => fetch(ASSETS + 'audio/' + name + '.mp3').then(r => r.a
    WORLD (built once the models are in)
    ===================================================================== */
 const obstacles = [{ x: 0, z: 0, r: 1.5 }];
-const SHR = 26;
+const SHR = 26, VEIL = 11.5, RING = 20;
+// each site: a record pedestal on the path, with its hall standing behind it
 const SITE = {
-  about: { pos: [0, -SHR], center: 'shrine', scale: 1.7, rad: 0.9 },
-  skills: { pos: [SHR, 0], center: 'pillar', scale: 1.25, rad: 0.8 },
-  projects: { pos: [-SHR, 0], center: 'coffin_decorated', scale: 1.25, rad: 1.5 },
-  contact: { pos: [0, SHR], center: 'crypt', scale: 1, rad: 3.6 }
+  about: { pos: [0, -SHR], hall: 'building_church_blue', hr: 3.6, prop: 'blueprint' },
+  skills: { pos: [SHR, 0], hall: 'building_blacksmith_blue', hr: 4.3, prop: 'anvil' },
+  projects: { pos: [0, SHR], hall: 'building_market_blue', hr: 5.4, prop: 'coffin_decorated' },
+  contact: { pos: [-SHR, 0], hall: 'building_castle_blue', hr: 6.9, prop: 'pillar' }
 };
+// anything that gets between the camera and the hero is dithered away around the line of sight
+const occU = { uOccP: { value: new T.Vector3() }, uOccR: { value: 0 } }, occDone = new WeakSet();
+function seeThrough(mat) {
+  if (!mat || occDone.has(mat)) return; occDone.add(mat);
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uOccP = occU.uOccP; sh.uniforms.uOccR = occU.uOccR;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vOccW;')
+      .replace('#include <project_vertex>', '#include <project_vertex>\n vec4 occW = vec4(transformed, 1.0);\n#ifdef USE_INSTANCING\n occW = instanceMatrix * occW;\n#endif\n vOccW = (modelMatrix * occW).xyz;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uOccP; uniform float uOccR; varying vec3 vOccW;')
+      .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+  if (uOccR > 0.0) {
+    vec3 occA = vOccW - cameraPosition, occB = uOccP - cameraPosition; float occH = dot(occA, occB) / dot(occB, occB);
+    if (occH > 0.0 && occH < 0.94) {
+      float occD = length(occA - occB * occH);
+      if (occD < uOccR) { float occK = smoothstep(uOccR * 0.45, uOccR, occD), occN = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))); if (occN > occK * 0.94 + 0.05) discard; }
+    }
+  }`);
+  };
+  mat.customProgramCacheKey = () => 'see-through';
+  mat.needsUpdate = true;
+}
 const dummy = new T.Object3D(), mtx = new T.Matrix4();
 function scatter(name, list) {
   if (!list.length) return;
-  const src = M[name]; src.updateMatrixWorld(true);
+  const src = M[name], ims = []; src.updateMatrixWorld(true);
   src.traverse(o => {
     if (!o.isMesh) return;
+    seeThrough(o.material);
     const im = new T.InstancedMesh(o.geometry, o.material, list.length); im.castShadow = SHADOWS; im.receiveShadow = true;
     list.forEach((t, i) => { dummy.position.set(t.x, t.y || 0, t.z); dummy.rotation.set(0, t.ry || 0, 0); dummy.scale.setScalar(t.s || 1); dummy.updateMatrix(); mtx.multiplyMatrices(dummy.matrix, o.matrixWorld); im.setMatrixAt(i, mtx); });
-    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); scene.add(im);
+    im.instanceMatrix.needsUpdate = true; im.computeBoundingSphere(); scene.add(im); ims.push(im);
   });
+  list.forEach((t, i) => { if (t.ob) { t.ob.ims = ims; t.ob.i = i; } });   // breakable pieces remember where they were drawn
 }
-function put(name, x, z, ry, s, parent) { const o = M[name].clone(); o.position.set(x, 0, z); o.rotation.y = ry || 0; o.scale.setScalar(s || 1); o.traverse(c => { if (c.isMesh) { c.castShadow = SHADOWS; c.receiveShadow = true; } }); (parent || scene).add(o); return o; }
+// trees, fences and graves give way to the pencil and the hammer
+const ZERO = new T.Matrix4().makeScale(0, 0, 0);
+function strikeOb(b, n) {
+  if (b.dead || !b.hp) return false;
+  b.hp -= n; const wood = b.kind === 'tree';
+  for (let i = 0; i < 8; i++) spark(b.x + (Math.random() - 0.5), 0.6 + Math.random() * 1.6, b.z + (Math.random() - 0.5), (Math.random() - 0.5) * 3, 1 + Math.random() * 2, (Math.random() - 0.5) * 3, 0.5, wood ? 0.9 : 0.6, wood ? 0.5 : 0.6, wood ? 0.2 : 0.6, 6);
+  sfx(wood ? 'impactWood_heavy_000' : 'impactMining_000', 0.5, wood ? 0.9 : 1.3, b);
+  if (b.hp > 0) return true;
+  b.dead = true; b.r = -1; b.ims.forEach(im => { im.setMatrixAt(b.i, ZERO); im.instanceMatrix.needsUpdate = true; });
+  for (let i = 0; i < (wood ? 46 : 20); i++) spark(b.x + (Math.random() - 0.5) * 1.6, Math.random() * (wood ? 5 : 1.5), b.z + (Math.random() - 0.5) * 1.6, (Math.random() - 0.5) * 4, 0.5 + Math.random() * 3, (Math.random() - 0.5) * 4, 0.7 + Math.random() * 0.7, wood ? 0.9 : 0.5, wood ? 0.45 : 0.5, wood ? 0.15 : 0.55, 5);
+  dust(b.x, b.z, 16, 4); sfx('impactWood_heavy_000', 0.7, wood ? 0.55 : 0.8, b); thump(wood ? 60 : 90, 0.3, 0.4, b); if (wood && !REDUCED) shake = Math.max(shake, 0.25);
+  return true;
+}
+function put(name, x, z, ry, s, parent) { const o = M[name].clone(); o.position.set(x, 0, z); o.rotation.y = ry || 0; o.scale.setScalar(s || 1); o.traverse(c => { if (c.isMesh) { c.castShadow = SHADOWS; c.receiveShadow = true; seeThrough(c.material); } }); (parent || scene).add(o); return o; }
 const sizeOf = name => new T.Box3().setFromObject(M[name]).getSize(new T.Vector3());
 
 const sites = [];
@@ -235,27 +279,35 @@ function buildWorld() {
     const fg = glow(0xff8a3c, 8, 0.3); fg.position.y = 1.3; scene.add(fg);
     [[0xff5a1f, 1.5, 0.75, 0.9], [0xff9a3c, 1.1, 0.95, 0.9], [0xffe08a, 0.6, 0.8, 1]].forEach(([c, sz, y, op], i) => { const f = glow(new T.Color(c).multiplyScalar(1.8), sz, op); f.position.set((i - 1) * 0.12, y, 0); f.userData.s = sz; scene.add(f); flames.push(f); });
   }
-  // paths to the four graveyards
+  // paths: a spoke out to each hall, and a ring road that carries the journey round from one to the next
   const inst = {};
-  const add = (name, t) => { (inst[name] || (inst[name] = [])).push(t); };
+  const add = (name, t, ob) => { if (ob) { t.ob = ob; obstacles.push(ob); } (inst[name] || (inst[name] = [])).push(t); };
+  const tile = (x, z) => add(pick(['path_A', 'path_B', 'path_C']), { x, z, ry: rnd() * 6.28, s: 0.9 + rnd() * 0.4 });
   for (let k = 0; k < 4; k++) {
     const ax = Math.sin(k * Math.PI / 2), az = Math.cos(k * Math.PI / 2);
-    for (let d = 3.4; d < SHR - 4; d += 1.3) { const j = (rnd() - 0.5) * 0.7; add(pick(['path_A', 'path_B', 'path_C']), { x: ax * d + az * j, z: az * d - ax * j, ry: rnd() * 6.28, s: 0.9 + rnd() * 0.4 }); }
+    for (let d = 3.4; d < SHR - 4; d += 1.3) { const j = (rnd() - 0.5) * 0.7; tile(ax * d + az * j, az * d - ax * j); }
   }
+  for (let a = 0.07; a < Math.PI * 1.5 - 0.07; a += 1.25 / RING) { const r = RING + (rnd() - 0.5) * 0.9; tile(Math.sin(a) * r, -Math.cos(a) * r); }
   // the four graveyards
   PROFILE.realms.forEach(r => {
     const cfg = SITE[r.id], [x, z] = cfg.pos, toC = Math.atan2(-x, -z), out = toC + Math.PI;
     const fx = Math.sin(toC), fz = Math.cos(toC), px = Math.cos(toC), pz = -Math.sin(toC);   // forward (to the fire) and sideways
     const g = new T.Group(); g.position.set(x, 0, z); scene.add(g);
-    const center = put(cfg.center, 0, 0, toC, cfg.scale, g);
+    cfg.rad = 0.9;
+    const center = put('shrine', 0, 0, toC, 1.6, g);
     const top = new T.Box3().setFromObject(center).max.y;
     obstacles.push({ x, z, r: cfg.rad });
+    const hx = x - fx * (cfg.hr + 3.4), hz = z - fz * (cfg.hr + 3.4);   // the hall, behind the pedestal, facing the fire
+    put(cfg.hall, hx, hz, toC, 1); obstacles.push({ x: hx, z: hz, r: cfg.hr });
+    if (cfg.prop) { const pr = put(cfg.prop, x + px * 2.6 - fx * 0.6, z + pz * 2.6 - fz * 0.6, toC + 0.5, 1.2); obstacles.push({ x: pr.position.x, z: pr.position.z, r: 0.75 }); }
+    const inHall = (ax, az, m) => Math.hypot(ax - hx, az - hz) < cfg.hr + m;
     // fence arc around the back, open towards the fire
     const R = cfg.rad + 7.5, segs = Math.round(R * 3.3 / 3);
     for (let i = 0; i < segs; i++) {
       const a = out - 1.65 + (i + 0.5) / segs * 3.3, wx = x + Math.sin(a) * R, wz = z + Math.cos(a) * R;
-      add(rnd() < 0.25 ? 'fence_broken' : 'fence', { x: wx, z: wz, ry: a + Math.PI / 2 });
-      obstacles.push({ x: wx, z: wz, r: 1.45 });
+      if (inHall(wx, wz, 1.8)) continue;
+      if (Math.abs(Math.hypot(wx, wz) - RING) < 3) continue;   // never across the ring road
+      add(rnd() < 0.25 ? 'fence_broken' : 'fence', { x: wx, z: wz, ry: a + Math.PI / 2 }, { x: wx, z: wz, r: 1.3, hp: 1, kind: 'fence' });
       const b = a - 1.65 / segs; add('fence_pillar', { x: x + Math.sin(b) * R, z: z + Math.cos(b) * R, ry: b });
     }
     // gate and lantern posts on the approach
@@ -265,13 +317,12 @@ function buildWorld() {
     const lamps = [];
     [-1, 1].forEach(sd => { const lx = x + fx * (cfg.rad + 4.2) + px * sd * 2.6, lz = z + fz * (cfg.rad + 4.2) + pz * sd * 2.6; add('post_lantern', { x: lx, z: lz, ry: toC + (sd > 0 ? Math.PI : 0) }); const sp = glow(0x5fe8c8, 1.6, 0.8); sp.position.set(lx, 1.75, lz); scene.add(sp); lamps.push(sp); obstacles.push({ x: lx, z: lz, r: 0.3 }); });
     // graves and clutter, keeping the approach lane clear
-    for (let i = 0, n = 0; i < 80 && n < 11; i++) {
+    for (let i = 0, n = 0; i < 80 && n < 7; i++) {
       const a = rnd() * 6.283, d = cfg.rad + 1.8 + rnd() * 5, lx = Math.sin(a) * d, lz = Math.cos(a) * d;
       const fwd = lx * fx + lz * fz, side = lx * px + lz * pz;
-      if (fwd > 0 && Math.abs(side) < 2.4) continue;
+      if ((fwd > 0 && Math.abs(side) < 3.2) || Math.abs(Math.hypot(x + lx, z + lz) - RING) < 2.4 || inHall(x + lx, z + lz, 1) || Math.hypot(lx - px * 2.6, lz - pz * 2.6) < 1.6) continue;
       const kind = pick(['grave_A', 'grave_B', 'grave_A_destroyed', 'gravestone', 'gravestone', 'gravemarker_A', 'gravemarker_B']);
-      add(kind, { x: x + lx, z: z + lz, ry: toC + (rnd() - 0.5) * 0.5 }); n++;
-      if (kind.startsWith('grave_')) obstacles.push({ x: x + lx, z: z + lz, r: 0.7 });
+      add(kind, { x: x + lx, z: z + lz, ry: toC + (rnd() - 0.5) * 0.5 }, kind.startsWith('grave_') ? { x: x + lx, z: z + lz, r: 0.65, hp: 1, kind: 'grave' } : null); n++;
     }
     for (let i = 0; i < 9; i++) { const a = rnd() * 6.283, d = cfg.rad + 1 + rnd() * 7; add(pick(['skull', 'bone_A', 'bone_C', 'ribcage', 'pumpkin_orange', 'skull_candle', 'candle_triple']), { x: x + Math.sin(a) * d, z: z + Math.cos(a) * d, ry: rnd() * 6.28, s: 0.8 + rnd() * 0.4 }); }
     add('post_skull', { x: x + fx * (gd + 2.5) + px * 3.4, z: z + fz * (gd + 2.5) + pz * 3.4, ry: toC });
@@ -286,21 +337,25 @@ function buildWorld() {
     const beamMat = new T.MeshBasicMaterial({ color: SPECTRAL.clone(), transparent: true, opacity: 0.2, blending: T.AdditiveBlending, depthWrite: false, fog: false, side: T.DoubleSide });
     const beam = new T.Mesh(new T.CylinderGeometry(0.25, 0.7, 80, 6, 1, true), beamMat); beam.position.y = 42; g.add(beam);
     const light = new T.PointLight(0x5fe8c8, 22, 18, 1.6); light.position.set(fx * 1.5, 3, fz * 1.5); g.add(light);
-    sites.push({ r, x, z, rad: cfg.rad, top, toC, fx, fz, px, pz, g, glyph, halo, dome, beamMat, light, lamps, guards: [], sealed: true, opened: false, hold: 0 });
+    // while the path is closed, a veil of mist holds the whole graveyard
+    const veil = new T.Mesh(new T.IcosahedronGeometry(VEIL, 2), new T.MeshBasicMaterial({ color: 0x9fb6d8, transparent: true, opacity: 0.1, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide, fog: false }));
+    veil.position.set(fx * 3, 0, fz * 3); veil.add(new T.Mesh(veil.geometry, new T.MeshBasicMaterial({ color: 0xb8c8e6, transparent: true, opacity: 0.16, wireframe: true, depthWrite: false, fog: false }))); g.add(veil);
+    sites.push({ r, x, z, rad: cfg.rad, top, toC, fx, fz, px, pz, g, glyph, halo, dome, beam, beamMat, light, lamps, veil, vx: x + fx * 3, vz: z + fz * 3, locked: false, guards: [], sealed: true, opened: false, hold: 0 });
   });
   // forest
   {
     // palette lock: autumn pines and dead trees only, so the forest stays in the ember / spectral range
     const kinds = ['tree_pine_orange_large', 'tree_pine_orange_large', 'tree_pine_orange_medium', 'tree_pine_orange_medium', 'tree_pine_yellow_large', 'tree_pine_yellow_medium', 'tree_pine_yellow_medium', 'tree_dead_large', 'tree_dead_medium'];
     const spots = [];
-    for (let i = 0; i < 1400 && spots.length < 230; i++) {
+    for (let i = 0; i < 1600 && spots.length < 210; i++) {
       const a = rnd() * 6.283, d = 11 + rnd() * 78, x = Math.cos(a) * d, z = Math.sin(a) * d;
-      if ((Math.abs(x) < 3.4 || Math.abs(z) < 3.4) && d < SHR + 6) continue;
-      if (sites.some(s => Math.hypot(x - s.x, z - s.z) < s.rad + 11.5)) continue;
-      if (spots.some(s => Math.hypot(s.x - x, s.z - z) < 3)) continue;
+      if ((Math.abs(x) < 4.6 || Math.abs(z) < 4.6) && d < SHR + 6) continue;   // spokes stay wide
+      if (Math.abs(d - RING) < 3.6) continue;                                   // so does the ring road
+      if (d < 50 && rnd() < 0.45) continue;                                     // the clearing itself is thinly wooded
+      if (sites.some(s => Math.hypot(x - s.x, z - s.z) < 11) || Object.values(SITE).some(c => Math.hypot(x - (c.pos[0] * (1 + (c.hr + 3.4) / SHR)), z - (c.pos[1] * (1 + (c.hr + 3.4) / SHR))) < c.hr + 3.5)) continue;
+      if (spots.some(s => Math.hypot(s.x - x, s.z - z) < 3.4)) continue;
       spots.push({ x, z }); const y = d > 53 ? Math.pow((d - 53) / 14, 1.7) * 2.2 : 0;
-      add(pick(kinds), { x, z, y, ry: rnd() * 6.28, s: (d > 50 ? 1.5 : 1.05) + rnd() * 0.55 });
-      if (d < 51) obstacles.push({ x, z, r: 0.5 });
+      add(pick(kinds), { x, z, y, ry: rnd() * 6.28, s: (d > 50 ? 1.5 : 1.05) + rnd() * 0.55 }, d < 53 ? { x, z, r: 0.5, hp: 2, kind: 'tree' } : null);
     }
     for (let i = 0; i < 70; i++) { const a = rnd() * 6.283, d = 8 + rnd() * 62, x = Math.cos(a) * d, z = Math.sin(a) * d; if ((Math.abs(x) < 2.6 || Math.abs(z) < 2.6) && d < SHR) continue; add(pick(['Rock_1_A_Color1', 'Rock_1_D_Color1', 'Rock_2_A_Color1', 'Rock_3_A_Color1', 'Rock_3_F_Color1']), { x, z, ry: rnd() * 6.28, s: 0.8 + rnd() * 1.2 }); }
     for (let i = 0; i < 90; i++) { const a = rnd() * 6.283, d = 7 + rnd() * 58, x = Math.cos(a) * d, z = Math.sin(a) * d; if ((Math.abs(x) < 2.4 || Math.abs(z) < 2.4) && d < SHR) continue; add(pick(['Bush_1_A_Color1', 'Bush_2_A_Color1', 'Bush_4_A_Color1']), { x, z, ry: rnd() * 6.28, s: 0.8 + rnd() * 0.7 }); }
@@ -412,6 +467,7 @@ class Actor {
       if (/^handslot\.?r$/.test(o.name)) this.handR = o;
       if (/^handslot\.?l$/.test(o.name)) this.handL = o;
       if (o.name === 'head') this.head = o;
+      if (o.name === 'chest') this.chest = o;
     });
     scene.add(this.root);
   }
@@ -436,8 +492,9 @@ class Actor {
   tint(color, k) { for (const m of this.mats) { m.emissive.copy(color); m.emissiveIntensity = k; } }
 }
 
-const P = { x: 0, z: 2.9, face: 0, hp: 100, inv: 0, dodge: 0, dx: 0, dz: 0, cd: 0, lock: 0, dead: false, healed: false, rage: 0, raged: false, combo: 0, comboT: 0, swing: 0, swingDur: 1, hitDone: true, queued: false, lunge: 0, lungeSp: 7, throwT: 0, step: 0, moving: false, sprint: false, atk: null, whooshed: true, idleT: 0, beat: 0 };
-let hero = null, handAxe = null, fly = null, flyIn = null, trail = null;
+const P = { x: 0, z: 2.9, face: 0, hp: 100, inv: 0, dodge: 0, dx: 0, dz: 0, cd: 0, lock: 0, dead: false, healed: false, rage: 0, raged: false, combo: 0, comboT: 0, swing: 0, swingDur: 1, hitDone: true, queued: false, yawB: Math.PI, tw: 0, pitchB: 0, chestTw: 0, lunge: 0, lungeSp: 7, throwT: 0, step: 0, moving: false, sprint: false, atk: null, whooshed: true, idleT: 0, beat: 0 };
+let hero = null, pencil = null, handHammer = null, fly = null, flyIn = null, trail = null;
+const qTw = new T.Quaternion(), UP = new T.Vector3(0, 1, 0);
 const camF = new T.Vector3(0, 0, 2.9), tipV = new T.Vector3(), baseV = new T.Vector3();
 let lean = 0, flyWhoosh = 0;
 const G = { state: 'held', pos: new T.Vector3(), dir: new T.Vector3(), dist: 0, hit: new Set(), spin: 0, pending: null };
@@ -466,16 +523,22 @@ function makeEnemy(site, ox, oz, kind, risen) {
 }
 
 function buildActors() {
-  hero = new Actor('Barbarian', 1, true);
-  handAxe = hero.hold('axe_1handed'); handAxe.scale.setScalar(1.25);
+  hero = new Actor('Ranger', 1, true);
+  // the pencil: drawn with, and fought with. Point outwards, held near the eraser.
+  pencil = M.pencil_B_long.clone(); pencil.traverse(c => { if (c.isMesh) c.castShadow = SHADOWS; });
+  if (pencil.children[0]) pencil.children[0].position.set(0, 0, 0);
+  pencil.scale.setScalar(3.1); pencil.rotation.x = Math.PI; pencil.position.y = 0.52; hero.handR.add(pencil);
+  // the hammer: carried in the off hand once earned, thrown to build
+  handHammer = M.hammer.clone(); handHammer.traverse(c => { if (c.isMesh) c.castShadow = SHADOWS; });
+  if (handHammer.children[0]) handHammer.children[0].position.set(0, 0, 0);
+  handHammer.scale.setScalar(1.25); handHammer.rotation.y = Math.PI; if (hero.handL) hero.handL.add(handHammer); handHammer.visible = can.hammer;
   hero.root.position.set(P.x, 0, P.z); hero.root.rotation.y = P.face + Math.PI;
   hero.play('Sit_Floor_Idle', { fade: 0 });
-  // the thrown axe: spins out, comes back to the hand
-  fly = new T.Group(); flyIn = M.axe_1handed.clone(); flyIn.scale.setScalar(1.45);
-  // Tumble in the plane of the blade: turn the axe so its flat side faces sideways and its edge faces the direction
-  // of travel, then spin about the sideways axis. The offset puts the spin centre near the head, where the weight is.
+  // the thrown hammer: tumbles head over handle along its flight, comes back to the hand
+  fly = new T.Group(); flyIn = M.hammer.clone(); flyIn.scale.setScalar(1.9);
   if (flyIn.children[0]) flyIn.children[0].position.set(0, 0, 0);
-  flyIn.rotation.y = Math.PI / 2; flyIn.position.set(0, -0.49, -0.16); const piv = new T.Group(); piv.add(flyIn); fly.add(piv); fly.userData.piv = piv;
+  flyIn.rotation.y = Math.PI / 2; flyIn.position.set(0, -0.55, 0);
+  const piv = new T.Group(); piv.add(flyIn); fly.add(piv); fly.userData.piv = piv;
   fly.add(glow(0xff8a3c, 2.2, 0.5)); const fl = new T.PointLight(0xff8a3c, 10, 9, 1.8); fly.add(fl); fly.visible = false; scene.add(fly);
   trail = new Trail(16, 0xffc890);
   hero.root.rotation.order = 'YXZ';
@@ -490,14 +553,47 @@ function buildActors() {
     else { makeEnemy(s, fx * d + px * 2.6, fz * d + pz * 2.6, 'minion'); makeEnemy(s, fx * d - px * 2.6, fz * d - pz * 2.6, 'minion'); makeEnemy(s, fx * 2 + px * 5, fz * 2 + pz * 5, 'mage'); }
   });
   sites.forEach(s => { if (save.opened.includes(s.r.id)) { lightSite(s, false); s.guards.forEach(e => { e.dead = true; e.a.root.visible = false; }); } });
+  refreshLocks(false); applyEvo();
 
   { const geo = new T.IcosahedronGeometry(0.26, 0), mat = new T.MeshBasicMaterial({ color: new T.Color(0x9fffe0).multiplyScalar(2), fog: false });
     for (let i = 0; i < 8; i++) { const m = new T.Mesh(geo, mat); m.add(glow(0x5fe8c8, 2, 0.6)); m.visible = false; scene.add(m); bolts.push({ m, live: false, vx: 0, vz: 0, t: 0 }); } }
   wave.m = new T.Mesh(new T.RingGeometry(0.88, 1, 64), new T.MeshBasicMaterial({ color: new T.Color(0x8ff5dd).multiplyScalar(1.6), transparent: true, opacity: 0, blending: T.AdditiveBlending, side: T.DoubleSide, depthWrite: false, fog: false }));
   wave.m.rotation.x = -Math.PI / 2; wave.m.position.y = 0.14; scene.add(wave.m);
   { const geo = new T.OctahedronGeometry(0.2, 0), mat = new T.MeshBasicMaterial({ color: new T.Color(0xffd27a), fog: false });
-    ALL_TAGS.forEach((tag, i) => { if (save.runes.includes(tag)) return; const o = { x: 0, z: 0 }, a = i * 2.399 + 0.6, d = 9 + ((i * 7) % 11) * 3.3; o.x = Math.cos(a) * d; o.z = Math.sin(a) * d; collide(o, 1.4);
+    // laid out along the journey in the order they were learned: out the first spoke, then round the ring road
+    const n = ALL_TAGS.length, per = Math.ceil(n / sites.length);
+    ALL_TAGS.forEach((tag, i) => {
+      if (save.runes.includes(tag)) return;
+      const st = Math.min(sites.length - 1, Math.floor(i / per)), j = i - st * per, lat = (j % 2 ? 1 : -1) * 2.2, o = { x: 0, z: 0 };
+      if (st === 0) { const d = 6 + j * (10 / Math.max(1, per - 1)); o.x = lat; o.z = -d; }
+      else { const a = (st - 1) * Math.PI / 2 + 0.3 + j * (0.95 / Math.max(1, per - 1)), r = RING + lat; o.x = Math.sin(a) * r; o.z = -Math.cos(a) * r; }
+      collide(o, 1.2);
       const m = new T.Mesh(geo, mat); m.add(glow(0xffd27a, 1.5, 0.3)); m.position.set(o.x, 1.1, o.z); scene.add(m); runes.push({ tag, m, x: o.x, z: o.z, got: false }); }); }
+}
+const DIRS = { '0,-1': '북쪽', '1,0': '동쪽', '-1,0': '서쪽', '0,1': '남쪽' };
+function refreshLocks(announce) {
+  sites.forEach((s, i) => {
+    const was = s.locked; s.locked = i > 0 && !save.opened.includes(ORDER[i - 1]);
+    s.veil.visible = s.locked; s.beam.visible = !s.locked; s.glyph.visible = s.halo.visible = !s.locked; s.light.visible = !s.locked; if (s.sealed) s.dome.visible = !s.locked;
+    s.lamps.forEach(l => { l.visible = !s.locked; });
+    if (announce && was && !s.locked) { burst(s.vx, 3, s.vz, 120, 9, 1.6, 0.6, 0.75, 1, 1); s.opening = true; }
+  });
+  if (handHammer) handHammer.visible = can.hammer && G.state === 'held';
+  $('#rageWrap').hidden = !can.ship;
+  const k = $('#keys'); if (k) k.innerHTML = keysHTML();
+}
+function keysHTML() {
+  return `<span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동 · <kbd>Shift</kbd> 질주 · <kbd>Space</kbd> 대시</span>` +
+    `<span><kbd>클릭</kbd> 연필 긋기(4연타)` + (can.hammer ? ` · <kbd>우클릭</kbd>/<kbd>Q</kbd> 망치 던지기·회수` : '') + `</span>` +
+    `<span>` + (can.ship ? `<kbd>R</kbd> 출시 · ` : '') + `<kbd>E</kbd> 조사 · <kbd>J</kbd> 일지</span>`;
+}
+// what each record gives: the next path, and the next tool
+function announceUnlock(id) {
+  const i = ORDER.indexOf(id), next = sites[i + 1], dir = next ? DIRS[Math.sign(Math.round(next.x)) + ',' + Math.sign(Math.round(next.z))] : '';
+  chime([659.3, 784, 987.8, 1318.5], 0.07, 0.1);
+  if (i === 0) toast('망치를 얻었다', (TOUCH ? '던지기 버튼으로 던지고 다시 눌러 불러들입니다' : '우클릭으로 던지고, 다시 눌러 불러들입니다') + ` · ${dir} 길이 열렸다`, 6.5);
+  else if (i === 1) toast('출시를 익혔다', (TOUCH ? '몰입이 가득 차면 출시 버튼' : '몰입이 가득 차면 R') + `으로 주변을 휩씁니다 · ${dir} 길이 열렸다`, 6.5);
+  else if (next) toast('마지막 길이 열렸다', `${dir} 성에서 해골왕이 기다린다`, 6);
 }
 function lightSite(s, withFx) {
   s.opened = true; s.sealed = false; s.dome.visible = false;
@@ -627,7 +723,7 @@ function buildHud() {
   const c = $('#compass');
   const add = (txt, cls, getA, ref) => { const d = document.createElement('span'); d.className = 'cm ' + cls; d.textContent = txt; c.appendChild(d); compassItems.push({ d, getA, ref }); };
   [['북', 0], ['서', Math.PI / 2], ['남', Math.PI], ['동', -Math.PI / 2]].forEach(([t, a]) => add(t, '', () => a));
-  sites.forEach(s => add('◆' + s.r.label, 'realm', () => Math.atan2(-(s.x - P.x), -(s.z - P.z)), s));
+  sites.forEach(s => add('◆' + s.r.label, 'realm', () => (s.locked ? null : Math.atan2(-(s.x - P.x), -(s.z - P.z))), s));
   add('✦', 'fire', () => (Math.hypot(P.x, P.z) < 3 ? null : Math.atan2(P.x, P.z)));
   $('#questList').innerHTML = sites.map(s => `<li data-id="${s.r.id}">${esc(s.r.place)}</li>`).join('');
 }
@@ -644,17 +740,34 @@ function updateCompass() {
 function refreshQuest() {
   const n = sites.filter(s => s.opened).length;
   $('#questHead').textContent = n === sites.length ? '사가 완성' : `기록 깨우기 ${n} / ${sites.length}`;
-  sites.forEach(s => $(`#questList li[data-id="${s.r.id}"]`).classList.toggle('done', s.opened));
+  sites.forEach(s => { const li = $(`#questList li[data-id="${s.r.id}"]`); li.classList.toggle('done', s.opened); li.classList.toggle('locked', s.locked); });
   $('#questRunes').textContent = `기술 룬 ${save.runes.length} / ${ALL_TAGS.length}`;
-  const lv = 1 + Math.floor(save.xp / 150);
-  $('#lvl').textContent = 'Lv ' + lv; $('#xpBar').style.transform = `scaleX(${(save.xp % 150) / 150})`;
+  $('#lvl').textContent = 'Lv ' + lvl(); $('#xpBar').style.transform = `scaleX(${(save.xp % XP_PER) / XP_PER})`;
 }
 let toastT = 0;
 function toast(msg, sub, dur) { const t = $('#toast'); t.innerHTML = esc(msg) + (sub ? `<small>${esc(sub)}</small>` : ''); t.classList.add('on'); toastT = dur || 3.2; }
 function dmgNum(x, y, z, n, big) { v3.set(x, y, z).project(camera); if (v3.z > 1) return; const d = document.createElement('span'); d.className = 'dmg' + (big ? ' big' : ''); d.textContent = n; d.style.transform = `translate(${((v3.x + 1) / 2 * app.clientWidth).toFixed(0)}px,${((1 - v3.y) / 2 * app.clientHeight).toFixed(0)}px)`; $('#hud').appendChild(d); d.addEventListener('animationend', () => d.remove()); }
+const STEPS = ['스케치', '와이어프레임', '프로토타입', '빌드'];
+function stepLabel(t) { v3.set(P.x, 2.5, P.z).project(camera); if (v3.z > 1) return; const d = document.createElement('span'); d.className = 'dmg step'; d.textContent = t; d.style.transform = `translate(${((v3.x + 1) / 2 * app.clientWidth).toFixed(0)}px,${((1 - v3.y) / 2 * app.clientHeight).toFixed(0)}px) translateX(-50%)`; $('#hud').appendChild(d); d.addEventListener('animationend', () => d.remove()); }
 function flash(o) { if (REDUCED) return; const el = $('#flash'); el.style.transition = 'none'; el.style.opacity = o; requestAnimationFrame(() => { el.style.transition = 'opacity .6s'; el.style.opacity = 0; }); }
-function gainRage(n) { P.rage = Math.min(100, P.rage + n); if (P.rage >= 100 && !P.raged) { P.raged = true; toast('불씨가 가득 찼다', TOUCH ? '폭발 버튼으로 주변을 휩쓸 수 있습니다' : 'R을 눌러 주변을 휩쓸 수 있습니다'); } }
-function addXP(n) { const before = Math.floor(save.xp / 150); save.xp += n; persist(); refreshQuest(); if (Math.floor(save.xp / 150) > before) chime([784, 987.8, 1174.7, 1568], 0.07, 0.09); if (Math.floor(save.xp / 150) > before) toast('레벨 ' + (1 + Math.floor(save.xp / 150)), '여정이 깊어졌다'); }
+function gainRage(n) { if (!can.ship) return; P.rage = Math.min(100, P.rage + n); if (P.rage >= 100 && !P.raged) { P.raged = true; toast('몰입이 가득 찼다', TOUCH ? '출시 버튼으로 주변을 휩쓸 수 있습니다' : 'R을 눌러 출시하세요. 주변을 휩씁니다'); } }
+const XP_PER = 120;
+const lvl = () => 1 + Math.floor(save.xp / XP_PER), has = n => lvl() >= n;
+const EVO = [
+  { lv: 2, name: '세 번째 획 · 프로토타입', d: '연속 긋기가 한 바퀴 도는 회전 긋기까지 이어집니다' },
+  { lv: 3, name: '네 번째 획 · 빌드', d: '뛰어올라 내려찍는 마무리가 열립니다' },
+  { lv: 4, name: '굵은 획', d: '연필이 커지고 획이 더 멀리, 더 세게 닿습니다' },
+  { lv: 5, name: '연쇄 망치', d: '던진 망치가 가까운 다른 적에게 한 번 더 튑니다' },
+  { lv: 6, name: '단축키', d: '대시가 적을 긋고 지나가며, 더 빨리 다시 쓸 수 있습니다' },
+  { lv: 7, name: '빌드 충격', d: '마무리 착지에서 먹물 고리가 퍼져 주변을 칩니다' },
+  { lv: 8, name: '큰 출시', d: '출시가 더 넓은 범위를 휩씁니다' }
+];
+const comboLen = () => (has(3) ? 4 : has(2) ? 3 : 2);
+function applyEvo() { if (pencil) pencil.scale.setScalar(has(4) ? 3.8 : 3.1); if (pencil) pencil.position.y = has(4) ? 0.66 : 0.52; }
+function addXP(n) {
+  const before = lvl(); save.xp += n; persist(); refreshQuest();
+  if (lvl() > before) { chime([784, 987.8, 1174.7, 1568], 0.07, 0.09); applyEvo(); const e = EVO.find(v => v.lv === lvl()); toast('레벨 ' + lvl() + (e ? ' · ' + e.name : ''), e ? e.d : '여정이 깊어졌다', 5); if (e && !REDUCED) burst(P.x, 1.2, P.z, 60, 6, 1.2, 1, 0.8, 0.4, 1); }
+}
 
 /* ---------- actions ---------- */
 const moveX = () => (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + joy.x;
@@ -662,13 +775,25 @@ const moveZ = () => (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.ha
 const busy = () => P.dead || P.lock > 0 || P.dodge > 0;
 function handPos(out) { return out.set(P.x + Math.cos(P.face) * 0.4, 1.25, P.z - Math.sin(P.face) * 0.4); }
 // dur: seconds of control lost · imp: clip fraction where the blow lands · end: clip fraction played before control returns
+// tw / pitch / hop: what the whole body does over the swing (progress 0..1) — wind up against the blow, then unwind
+// through it, so the arc travels around the side of the body where a camera behind the hero can see it.
 const ATTACKS = [
-  { clip: 'Melee_1H_Attack_Slice_Diagonal', dur: 0.46, imp: 0.42, end: 0.72, dmg: 22, R: 2.9, kb: 0.7, arc: 0.15 },
-  { clip: 'Melee_1H_Attack_Slice_Horizontal', dur: 0.44, imp: 0.2, end: 0.5, dmg: 26, R: 3.0, kb: 0.8, arc: 0 },
-  { clip: 'Melee_Unarmed_Attack_Kick', dur: 0.42, imp: 0.47, end: 0.8, dmg: 14, R: 2.5, kb: 3.4, arc: 0.45, kick: true, stun: 0.75 },
-  { clip: 'Melee_1H_Attack_Jump_Chop', dur: 0.8, imp: 0.58, end: 0.88, dmg: 50, R: 3.6, kb: 2.2, heavy: true }
+  { clip: 'Melee_1H_Attack_Slice_Diagonal', dur: 0.5, imp: 0.42, end: 0.72, dmg: 22, R: 3.0, kb: 0.8, arc: 0.1, chest: 0.5,
+    tw: [[0, 0], [0.3, -0.9], [0.58, 0.35], [1, 1.0]], pitch: [[0, 0], [0.3, -0.14], [0.6, 0.22], [1, 0.05]] },
+  { clip: 'Melee_1H_Attack_Slice_Horizontal', dur: 0.48, imp: 0.2, end: 0.5, dmg: 26, R: 3.1, kb: 0.9, arc: 0, chest: 0.5,
+    tw: [[0, 0], [0.22, 0.85], [0.42, -0.3], [1, -1.05]], pitch: [[0, 0], [0.22, -0.08], [0.45, 0.14], [1, 0]] },
+  { clip: 'Melee_1H_Attack_Slice_Horizontal', dur: 0.62, imp: 0.25, end: 0.62, dmg: 30, R: 3.3, kb: 1.7, all: true, spin: true, chest: 0,
+    tw: [[0, 0], [0.16, 0.75], [0.82, -6.0], [1, -6.2832]], pitch: [[0, 0], [0.16, -0.1], [0.5, 0.16], [1, 0]], hop: [[0, 0], [0.4, 0.18], [0.8, 0], [1, 0]] },
+  { clip: 'Melee_1H_Attack_Jump_Chop', dur: 0.84, imp: 0.58, end: 0.88, dmg: 50, R: 3.6, kb: 2.2, heavy: true, chest: 0.4,
+    tw: [[0, 0], [0.36, -0.6], [0.66, 0.2], [1, 0.1]], pitch: [[0, 0], [0.36, -0.34], [0.66, 0.5], [1, 0.08]], hop: [[0, 0], [0.42, 0.75], [0.6, 0.3], [0.67, 0], [1, 0]] }
 ];
-const DASH = { clip: 'Melee_1H_Attack_Stab', dur: 0.48, imp: 0.27, end: 0.57, dmg: 32, R: 3.3, kb: 1.8, arc: 0.5, dash: true };
+function kf(keys, p) {   // eased keyframes
+  if (!keys) return 0;
+  for (let i = 1; i < keys.length; i++) if (p <= keys[i][0]) { const a = keys[i - 1], b = keys[i], t = clamp((p - a[0]) / (b[0] - a[0] || 1), 0, 1), e = t * t * (3 - 2 * t); return a[1] + (b[1] - a[1]) * e; }
+  return keys[keys.length - 1][1];
+}
+const DASH = { clip: 'Melee_1H_Attack_Stab', dur: 0.48, imp: 0.27, end: 0.57, dmg: 32, R: 3.3, kb: 1.8, arc: 0.5, dash: true, chest: 0.4,
+  tw: [[0, 0], [0.2, -0.5], [0.5, 0.3], [1, 0.1]], pitch: [[0, 0], [0.2, -0.1], [0.5, 0.3], [1, 0.05]] };
 function slash() {
   if (state !== 'play' || busy()) return;
   if (G.state !== 'held') { if (G.state === 'out') { G.state = 'back'; G.hit.clear(); } return; }
@@ -676,31 +801,35 @@ function slash() {
   if (P.throwT > 0) return;
   let atk;
   if (P.sprint && P.moving && P.comboT <= 0) atk = DASH;   // running in: a lunging stab
-  else { P.combo = P.comboT > 0 ? (P.combo + 1) % ATTACKS.length : 0; atk = ATTACKS[P.combo]; }
+  else { P.combo = P.comboT > 0 ? (P.combo + 1) % comboLen() : 0; atk = ATTACKS[P.combo]; }
   P.atk = atk; P.swingDur = P.swing = atk.dur; P.comboT = atk.dur + 0.5; P.hitDone = false; P.whooshed = false; P.queued = false;
-  let tx = fwd.x, tz = fwd.z, best = 5.5;
-  for (const e of enemies) { if (e.dead) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < best && (dx * fwd.x + dz * fwd.z) / d > -0.2) { best = d; tx = dx / d; tz = dz / d; } }
+  // aim help: turn to the nearest enemy roughly ahead, and close the gap
+  let tx = fwd.x, tz = fwd.z, best = 6.5;
+  for (const e of enemies) { if (e.dead || e.site.locked) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < best && (dx * fwd.x + dz * fwd.z) / d > -0.3) { best = d; tx = dx / d; tz = dz / d; } }
   P.face = Math.atan2(-tx, -tz); P.dx = tx; P.dz = tz;
-  P.lunge = atk.dash ? 0.2 : (best > 2 && best < 5.5 ? 0.16 : 0.05); P.lungeSp = atk.dash ? 13 : 7;
+  P.lunge = atk.dash ? 0.2 : (best > 2 && best < 6.5 ? Math.min(0.3, (best - 1.8) / 9) : 0.05); P.lungeSp = atk.dash ? 13 : 9;
   hero.play(atk.clip, { once: true, dur: atk.dur / atk.end, fade: 0.07 });
+  stepLabel(atk.dash ? '단축키' : STEPS[P.combo]);
   if (atk.heavy) whoosh(0.3, 220, 700, 0.3, 0.8);
+  if (atk.spin) whoosh(0.5, 300, 1500, 0.4, 0.9);
   if (atk.dash) dust(P.x, P.z, 8, 2.5);
 }
 function throwAxe(auto) {
   if (state !== 'play' || busy()) return;
+  if (!can.hammer) { if (!P.hintT || time - P.hintT > 5) { P.hintT = time; toast('아직 던질 것이 없다', '첫 기록을 깨우면 망치를 얻습니다', 2.6); } return; }
   if (G.state === 'out') { G.state = 'back'; G.hit.clear(); return; }
   if (G.state !== 'held' || P.cd > 0 || P.swing > 0 || P.throwT > 0) return;
-  let target = null, best = auto ? 0.5 : 0.985;
+  let target = null, best = auto ? 0.5 : 0.955;   // about 17 degrees of help around the crosshair
   ray.setFromCamera(auto ? tmp2.set(0, 0, 0) : aim, camera);
   for (const e of enemies) {
-    if (e.dead) continue;
+    if (e.dead || e.site.locked) continue;
     tmp.set(e.x, 1.2 * e.sc, e.z).sub(ray.ray.origin); const d = tmp.length(); if (d > 40) continue;
     const dot = tmp.normalize().dot(ray.ray.direction) - (auto ? d * 0.004 : 0);
     if (dot > best) { best = dot; target = e; }
   }
   if (target) tmp.set(target.x, 1.2 * target.sc, target.z);
   else { tmp.copy(ray.ray.direction).multiplyScalar(30).add(ray.ray.origin); if (tmp.y < 0.6) tmp.y = 0.6; }
-  handPos(G.pos); G.dir.copy(tmp).sub(G.pos).normalize();
+  handPos(G.pos); G.dir.copy(tmp).sub(G.pos).normalize(); G.target = target; G.chained = false;
   P.face = Math.atan2(-G.dir.x, -G.dir.z); P.throwT = 0.46; P.cd = 0.55; G.pending = 0.27;
   hero.play('Throw', { once: true, dur: 0.55, fade: 0.06 });   // the hand lets go about halfway through the clip
 }
@@ -709,17 +838,18 @@ function dodge() {
   let mx = moveX(), mz = moveZ(), back = false;
   if (!mx && !mz) { P.dx = Math.sin(P.face); P.dz = Math.cos(P.face); back = true; }
   else { const l = Math.hypot(mx, mz); mx /= l; mz /= l; P.dx = right.x * mx + fwd.x * mz; P.dz = right.z * mx + fwd.z * mz; P.face = Math.atan2(-P.dx, -P.dz); }
-  P.dodge = 0.42; P.inv = 0.46; P.cd = 0.65; P.swing = 0; P.queued = false;
+  P.dodge = 0.42; P.inv = 0.46; P.cd = has(6) ? 0.45 : 0.65; P.swing = 0; P.queued = false; P.dashHit = new Set();
   hero.play(back ? 'Dodge_Backward' : 'Dodge_Forward', { once: true, dur: 0.48, fade: 0.05 });
   whoosh(0.24, 260, 900, 0.3, 0.7); sfx('cloth1', 0.3); dust(P.x, P.z, 10, 3);
 }
 function nova() {
-  if (state !== 'play' || busy() || P.rage < 100) return;
+  if (state !== 'play' || busy() || P.rage < 100 || !can.ship) return;
   P.rage = 0; P.raged = false; P.inv = Math.max(P.inv, 0.9); P.lock = 0.7; P.swing = 0;
   hero.play('Melee_2H_Attack_Spin', { once: true, dur: 0.8, fade: 0.06 });
-  for (const e of enemies) { if (e.dead) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < 8) hitEnemy(e, 70, dx / d, dz / d, 2.6); }
+  for (const e of enemies) { if (e.dead) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < (has(8) ? 10.5 : 8)) hitEnemy(e, 70, dx / d, dz / d, 2.6); }
+  for (const b of obstacles) if (b.hp && !b.dead && Math.hypot(b.x - P.x, b.z - P.z) < 6) strikeOb(b, 3);
   bolts.forEach(b => { if (b.live) killBolt(b); });
-  burst(P.x, 1, P.z, 160, 10, 1, 1, 0.6, 0.2, 2); if (!REDUCED) { shake = 0.9; slowT = 0.5; } flash(0.4);
+  burst(P.x, 1, P.z, has(8) ? 220 : 160, has(8) ? 13 : 10, 1, 1, 0.6, 0.2, 2); if (!REDUCED) { shake = 0.9; slowT = 0.5; } flash(0.4);
   whoosh(0.8, 180, 3200, 0.6, 0.6); thump(62, 0.6, 0.6); sfx('impactBell_heavy_000', 0.4, 0.45); dust(P.x, P.z, 26, 7);
 }
 function hurtPlayer(n) {
@@ -731,7 +861,7 @@ function hurtPlayer(n) {
     P.hp = 0; P.dead = true; P.swing = 0; hero.play('Death_A', { once: true });
     setTimeout(() => { $('#fade').style.opacity = 1; }, 900);
     setTimeout(() => {
-      P.x = 0; P.z = 3; camF.set(0, 0, 3); P.hp = 100; P.dead = false; P.inv = 2; yaw = 0; P.face = 0; G.state = 'held'; fly.visible = false; handAxe.visible = true;
+      P.x = 0; P.z = 3; camF.set(0, 0, 3); P.tw = 0; P.pitchB = 0; hero.root.position.y = 0; P.hp = 100; P.dead = false; P.inv = 2; yaw = 0; P.face = 0; G.state = 'held'; fly.visible = false; handHammer.visible = can.hammer;
       bolts.forEach(b => { if (b.live) killBolt(b); }); wave.live = false; wave.m.material.opacity = 0;
       enemies.forEach(e => { if (!e.dead && e.state !== 'dormant') { e.x = e.hx; e.z = e.hz; e.state = 'idle'; } });
       hero.play('Idle_A', { fade: 0 }); $('#fade').style.opacity = 0; toast('모닥불 곁에서 다시 일어섰다', '해골의 눈이 붉게 빛나면 Space로 대시해 피하세요');
@@ -755,7 +885,7 @@ function hitEnemy(e, n, dx, dz, kb, stun) {
   }
   if (e.hp <= 0) {
     e.dead = true; e.t = 0; e.eye.visible = false; rattle(e, e.boss ? 9 : 5); sfx('impactWood_heavy_000', 0.6, 0.6, e); thump(60, 0.3, 0.4, e);
-    burst(e.x, 1.2 * e.sc, e.z, e.boss ? 90 : 36, 5, 1.1, 0.4, 0.9, 0.8, 3); save.kills = (save.kills || 0) + 1; addXP(e.boss ? 80 : 20);
+    burst(e.x, 1.2 * e.sc, e.z, e.boss ? 90 : 36, 5, 1.1, 0.4, 0.9, 0.8, 3); save.kills = (save.kills || 0) + 1; addXP(e.boss ? 60 : 15);
     const s = e.site;
     if (s.sealed && s.guards.every(g => g.dead)) { s.sealed = false; s.dome.visible = false; burst(s.x, 2, s.z, 80, 7, 1, 0.4, 0.9, 0.8, 5); sfx('metalLatch', 0.7, 0.6); sfx('impactBell_heavy_000', 0.45, 0.7); whoosh(1.3, 2400, 300, 0.22, 1.5); if (!REDUCED) slowT = 0.9; toast('봉인이 깨졌다', `${s.r.place}에 다가가 기록을 깨우세요`); }
   }
@@ -765,14 +895,14 @@ function killBolt(b) { b.live = false; b.m.visible = false; burst(b.m.position.x
 function startWave(e) { wave.live = true; wave.r = 1.5; wave.hit = false; wave.m.position.x = e.x; wave.m.position.z = e.z; burst(e.x, 0.4, e.z, 50, 7, 0.7, 0.4, 0.9, 0.8, 6); if (!REDUCED) shake = Math.max(shake, 0.7); sfx('impactMining_000', 0.8, 0.5, e); thump(55, 0.7, 0.7, e); whoosh(0.9, 140, 600, 0.45, 0.6, e); dust(e.x, e.z, 30, 8); }
 
 /* ---------- records: cinematic, panel, ending ---------- */
-const cine = { s: null, t: 0, a0: 0, lit: false };
+const cine = { s: null, t: 0, a0: 0, lit: false, fresh: null };
 function openPanel(s) {
   if (s.opened) { showPanel(s, false); return; }
-  save.opened.push(s.r.id); addXP(100);
+  save.opened.push(s.r.id); addXP(100); cine.fresh = s.r.id;
   state = 'cine'; cine.s = s; cine.t = 0; cine.lit = false; cine.a0 = Math.atan2(P.x - s.x, P.z - s.z) + 0.5;
   app.classList.add('cine'); $('#toast').classList.remove('on'); toastT = 0; keys.clear(); useHeld = false; joy.x = joy.y = 0; $('#prompt').hidden = true;
   if (document.pointerLockElement) document.exitPointerLock();
-  P.face = Math.atan2(-(s.x - P.x), -(s.z - P.z)); hero.root.rotation.y = P.face + Math.PI; hero.play('Interact', { once: true, dur: 1.6 });
+  P.face = Math.atan2(-(s.x - P.x), -(s.z - P.z)); P.yawB = P.face + Math.PI; P.tw = 0; hero.root.rotation.set(0, P.yawB, 0); hero.root.position.y = 0; hero.play('Interact', { once: true, dur: 1.6 });
   sfx('metalLatch', 0.6, 0.5); tone('sine', 196, 392, 1.1, 0.07); whoosh(1.1, 300, 1800, 0.15, 1.5);
 }
 function updateCine(dt) {
@@ -803,12 +933,13 @@ function showEnding() {
 }
 function closePanel() {
   $('#panel').hidden = true; state = 'play'; startBlend(0.8);
+  if (cine.fresh) { const id = cine.fresh; cine.fresh = null; refreshLocks(true); refreshQuest(); announceUnlock(id); }
   if (sites.every(s => s.opened) && !save.done) { save.done = true; persist(); burst(P.x, 1, P.z, 120, 8, 1.6, 1, 0.75, 0.35, 1); showEnding(); }
 }
 
 /* ---------- per-frame ---------- */
 function collide(o, rad) {
-  for (const b of obstacles) { const dx = o.x - b.x, dz = o.z - b.z, d = Math.hypot(dx, dz), m = b.r + rad; if (d < m && d > 0.0001) { o.x = b.x + dx / d * m; o.z = b.z + dz / d * m; } }
+  for (const b of obstacles) { if (b.dead) continue; const dx = o.x - b.x, dz = o.z - b.z, d = Math.hypot(dx, dz), m = b.r + rad; if (d < m && d > 0.0001) { o.x = b.x + dx / d * m; o.z = b.z + dz / d * m; } }
   const d = Math.hypot(o.x, o.z); if (d > 50) { o.x *= 50 / d; o.z *= 50 / d; }
 }
 function updatePlayer(dt) {
@@ -817,7 +948,8 @@ function updatePlayer(dt) {
   if (keys.has('ArrowLeft')) yaw += 1.8 * dt; if (keys.has('ArrowRight')) yaw -= 1.8 * dt;
   let moving = false, sprint = false, turn = 0;
   if (!P.dead) {
-    if (P.dodge > 0) { P.dodge -= dt; const k = P.dodge > 0.1 ? 11.5 : 4; P.x += P.dx * k * dt; P.z += P.dz * k * dt; if (P.dodge <= 0) dust(P.x, P.z, 6, 2); }
+    if (P.dodge > 0) { P.dodge -= dt; const k = P.dodge > 0.1 ? 11.5 : 4; P.x += P.dx * k * dt; P.z += P.dz * k * dt;
+      if (has(6) && P.dashHit) for (const e of enemies) { if (e.dead || P.dashHit.has(e)) continue; if (Math.hypot(e.x - P.x, e.z - P.z) < 1.4 * e.sc) { P.dashHit.add(e); hitEnemy(e, 14, P.dx, P.dz, 0.4); } } if (P.dodge <= 0) dust(P.x, P.z, 6, 2); }
     else if (P.lock <= 0) {
       let mx = moveX(), mz = moveZ(); const l = Math.hypot(mx, mz);
       if (l > 0.15 && P.swing <= 0 && P.throwT <= 0.2) {
@@ -841,14 +973,20 @@ function updatePlayer(dt) {
         if (atk.kick) whoosh(0.16, 170, 520, 0.4, 0.8); else if (atk.heavy) whoosh(0.34, 320, 1700, 0.55, 0.9); else if (atk.dash) whoosh(0.26, 700, 2800, 0.42, 1.4); else whoosh(0.2, 520 + P.combo * 120, 2100 + P.combo * 300, 0.36, 1.2);
       }
       if (!P.hitDone && el >= hitT) {
-        P.hitDone = true; const R = atk.R, fx = -Math.sin(P.face), fz = -Math.cos(P.face);
-        for (const e of enemies) { if (e.dead) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < R + 0.5 * e.sc && (atk.heavy || (dx * fx + dz * fz) / d > atk.arc)) { hitEnemy(e, atk.dmg, atk.kick ? fx : dx / d, atk.kick ? fz : dz / d, atk.kb, atk.stun); gainRage(atk.kick ? 6 : 12); } }
+        P.hitDone = true; const bold = has(4), R = atk.R * (bold ? 1.15 : 1), dmg = Math.round(atk.dmg * (bold ? 1.2 : 1)), fx = -Math.sin(P.face), fz = -Math.cos(P.face);
+        for (const b of obstacles) { if (!b.hp || b.dead) continue; const dx = b.x - P.x, dz = b.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < R * 0.8 + b.r && (atk.heavy || atk.all || (dx * fx + dz * fz) / d > 0.2)) strikeOb(b, atk.heavy ? 2 : 1); }
+        for (const e of enemies) { if (e.dead) continue; const dx = e.x - P.x, dz = e.z - P.z, d = Math.hypot(dx, dz) || 1; if (d < R + 0.5 * e.sc && (atk.heavy || atk.all || (dx * fx + dz * fz) / d > atk.arc)) { hitEnemy(e, dmg, atk.kick ? fx : dx / d, atk.kick ? fz : dz / d, atk.kb, atk.stun); gainRage(atk.kick ? 6 : 12); } }
         if (!atk.kick) for (const b of bolts) if (b.live && Math.hypot(b.m.position.x - P.x, b.m.position.z - P.z) < R) killBolt(b);
-        if (atk.heavy) { const gx = P.x + fx * 1.5, gz = P.z + fz * 1.5; burst(gx, 0.3, gz, 34, 5, 0.6, 1, 0.6, 0.2, 8); dust(gx, gz, 22, 6); sfx('impactMining_000', 0.55, 0.8); thump(70, 0.3, 0.55); if (!REDUCED) shake = Math.max(shake, 0.45); }
+        if (atk.heavy) { const gx = P.x + fx * 1.5, gz = P.z + fz * 1.5; burst(gx, 0.3, gz, 34, 5, 0.6, 1, 0.6, 0.2, 8); dust(gx, gz, 22, 6); sfx('impactMining_000', 0.55, 0.8); thump(70, 0.3, 0.55); if (!REDUCED) shake = Math.max(shake, 0.45);
+          if (has(7)) {   // ink ring from the landing
+            for (let i = 0; i < 70; i++) { const a = i / 70 * 6.283; spark(gx + Math.cos(a) * 0.6, 0.25, gz + Math.sin(a) * 0.6, Math.cos(a) * 9, 0.4, Math.sin(a) * 9, 0.5, 1, 0.75, 0.4, 0); }
+            for (const e of enemies) { if (e.dead) continue; const dx = e.x - gx, dz = e.z - gz, d = Math.hypot(dx, dz) || 1; if (d > R && d < 5.6) hitEnemy(e, 25, dx / d, dz / d, 1.8); }
+          } }
       }
       if (P.swing <= 0 && P.queued) { P.queued = false; P.swing = 0; slash(); }
     }
     collide(P, 0.45);
+    for (const s of sites) if (s.locked) { const ox = P.x - s.vx, oz = P.z - s.vz, od = Math.hypot(ox, oz); if (od < VEIL + 0.4 && od > 0.001) { P.x = s.vx + ox / od * (VEIL + 0.4); P.z = s.vz + oz / od * (VEIL + 0.4); if (!P.veilT || time - P.veilT > 6) { P.veilT = time; toast('안개가 길을 막고 있다', '앞선 기록을 먼저 깨워야 이 길이 열립니다'); } } }
   }
   P.moving = moving; P.sprint = sprint;
   if (!P.dead && P.swing <= 0 && P.dodge <= 0 && P.lock <= 0 && P.throwT <= 0.1) {
@@ -857,36 +995,52 @@ function updatePlayer(dt) {
   }
   // body follows the motion: bank into turns, lean into a sprint
   lean += ((moving ? clamp(turn * 0.45, -0.28, 0.28) : 0) - lean) * Math.min(1, dt * 7);
-  const r = hero.root.rotation; hero.root.position.set(P.x, 0, P.z);
-  r.y += wrapA(P.face + Math.PI - r.y) * Math.min(1, dt * 18); r.z = -lean; r.x += ((moving && sprint ? 0.11 : 0) - r.x) * Math.min(1, dt * 8);
+  const r = hero.root.rotation; let hop = 0, pitchT = moving && sprint ? 0.11 : 0;
+  if (P.swing > 0 && !P.dead && P.atk) {   // the body winds up against the blow and unwinds through it
+    const pr = clamp(1 - P.swing / P.swingDur, 0, 1);
+    P.tw = REDUCED && P.atk.spin ? 0 : kf(P.atk.tw, pr); pitchT = kf(P.atk.pitch, pr); hop = kf(P.atk.hop, pr); P.chestTw = P.tw * (P.atk.chest || 0); P.pitchB = pitchT;
+  } else {
+    if (Math.abs(P.tw) > Math.PI) P.tw = wrapA(P.tw);
+    const k = Math.min(1, dt * 9); P.tw += -P.tw * k; P.chestTw += -P.chestTw * k; P.pitchB += (pitchT - P.pitchB) * Math.min(1, dt * 8);
+  }
+  hero.root.position.set(P.x, hop, P.z);
+  P.yawB += wrapA(P.face + Math.PI - P.yawB) * Math.min(1, dt * 18); r.y = P.yawB + P.tw; r.z = -lean; r.x = P.pitchB;
   hero.tint(cRed, P.inv > 0 && P.dodge <= 0 && P.hp < 100 ? Math.max(0, P.inv - 0.25) * 1.2 : 0);
   fill.position.set(P.x, 2.4, P.z);
-  fovKick += ((sprint ? 5 : 0) - fovKick) * Math.min(1, dt * 5);
+  fovKick += ((sprint ? 5 : 0) + (P.swing > 0 ? 3.5 : 0) - fovKick) * Math.min(1, dt * 5);
   if (Math.hypot(P.x, P.z) < 4.5 && P.hp < 100 && !P.dead) { P.hp = Math.min(100, P.hp + 30 * dt); if (!P.healed) { P.healed = true; toast('모닥불이 상처를 덮는다', '체력은 여기서 회복됩니다'); } }
   $('#hpBar').style.transform = `scaleX(${P.hp / 100})`;
-  $('#rageBar').style.transform = `scaleX(${P.rage / 100})`; $('#rageWrap').classList.toggle('full', P.rage >= 100); $('#tNova').hidden = P.rage < 100;
+  $('#rageBar').style.transform = `scaleX(${P.rage / 100})`; $('#rageWrap').classList.toggle('full', P.rage >= 100); $('#tNova').hidden = P.rage < 100 || !can.ship; $('#tThrow').hidden = !can.hammer;
 }
 function updateAxe(dt) {
   G.spin += dt * 24;
   if (G.pending !== null) {   // release point of the throw animation
     G.pending -= dt;
-    if (G.pending <= 0) { G.pending = null; if (!P.dead) { handPos(G.pos); G.state = 'out'; G.dist = 0; G.hit.clear(); handAxe.visible = false; fly.visible = true; whoosh(0.28, 380, 1700, 0.42, 1.1); flyWhoosh = 0.1; } }
+    if (G.pending <= 0) { G.pending = null; if (!P.dead) { handPos(G.pos); G.state = 'out'; G.dist = 0; G.hit.clear(); handHammer.visible = false; fly.visible = true; whoosh(0.28, 380, 1700, 0.42, 1.1); flyWhoosh = 0.1; } }
   }
   if (G.state !== 'held') {
     if (G.state === 'out') {
       const step = 34 * dt; G.pos.addScaledVector(G.dir, step); G.dist += step;
+      if (G.target && !G.target.dead) { tmp.set(G.target.x, 1.2 * G.target.sc, G.target.z).sub(G.pos).normalize(); G.dir.lerp(tmp, Math.min(1, dt * 5)).normalize(); }   // bends a little towards its mark
       let turn = G.dist > 24 || G.pos.y < 0.2 || G.pos.y > 14;
-      for (const b of obstacles) if (b.r > 0.75 && G.pos.y < 4 && Math.hypot(G.pos.x - b.x, G.pos.z - b.z) < b.r - 0.15) turn = true;
+      for (const b of obstacles) {
+        if (b.dead || G.pos.y > 4.5 || Math.hypot(G.pos.x - b.x, G.pos.z - b.z) > Math.max(0.6, b.r - 0.1)) continue;
+        if (b.hp) { if (!G.hit.has(b)) { G.hit.add(b); strikeOb(b, 2); } } else if (b.r > 0.75) turn = true;
+      }
       if (turn) { G.state = 'back'; G.hit.clear(); burst(G.pos.x, G.pos.y, G.pos.z, 10, 3, 0.4, 1, 0.6, 0.2, 6); sfx('impactMetal_heavy_000', 0.3, 1.2, G.pos); }
     } else {
       handPos(tmp); tmp.sub(G.pos); const d = tmp.length();
-      if (d < 0.9) { G.state = 'held'; fly.visible = false; handAxe.visible = true; sfx('metalClick', 0.5); thump(150, 0.08, 0.3); hero.play('Hit_B', { once: true, dur: 0.3, fade: 0.04 }); P.lock = Math.max(P.lock, 0.12); }
+      if (d < 0.9) { G.state = 'held'; fly.visible = false; handHammer.visible = true; sfx('metalClick', 0.5); thump(150, 0.08, 0.3); hero.play('Hit_B', { once: true, dur: 0.3, fade: 0.04 }); P.lock = Math.max(P.lock, 0.12); }
       else { G.dir.copy(tmp).divideScalar(d); G.pos.addScaledVector(G.dir, Math.min(d, 42 * dt)); }
     }
     if (G.state !== 'held') {
       for (const e of enemies) {
         if (e.dead || G.hit.has(e)) continue;
-        if (Math.hypot(G.pos.x - e.x, G.pos.z - e.z) < 0.8 * e.sc + 0.35 && G.pos.y < 2.4 * e.sc) { G.hit.add(e); hitEnemy(e, G.state === 'out' ? 34 : 22, G.dir.x, G.dir.z); gainRage(8); }
+        if (Math.hypot(G.pos.x - e.x, G.pos.z - e.z) < 0.8 * e.sc + 0.35 && G.pos.y < 2.4 * e.sc) { G.hit.add(e); hitEnemy(e, G.state === 'out' ? 34 : 22, G.dir.x, G.dir.z); gainRage(8);
+          if (G.state === 'out' && has(5) && !G.chained) {   // chain: carry on to the next nearest
+            let nx = null, nd = 10; for (const o of enemies) { if (o.dead || o === e || G.hit.has(o) || o.site.locked) continue; const od = Math.hypot(o.x - e.x, o.z - e.z); if (od < nd) { nd = od; nx = o; } }
+            if (nx) { G.chained = true; G.target = nx; G.dist = Math.max(0, G.dist - nd); whoosh(0.2, 600, 2000, 0.3, 1.4, G.pos); }
+          } }
       }
       fly.position.copy(G.pos); fly.rotation.y = Math.atan2(G.dir.x, G.dir.z); fly.userData.piv.rotation.x = G.spin; fly.updateMatrixWorld(true);
       flyWhoosh -= dt; if (flyWhoosh <= 0) { flyWhoosh = 0.14; whoosh(0.13, 420, 1150, 0.2, 1.6, G.pos); }   // one beat per turn of the blade
@@ -894,9 +1048,10 @@ function updateAxe(dt) {
   }
   // the brush mark follows the edge of whichever axe is moving
   const flying = G.state !== 'held', atk = P.atk, el = P.swingDur - P.swing;
-  const swinging = !flying && P.swing > 0 && atk && !atk.kick && el > atk.dur * atk.imp / atk.end - 0.17 && el < atk.dur * atk.imp / atk.end + 0.1;
-  const node = flying ? flyIn.children[0] : handAxe.children[0];
-  if ((flying || swinging) && node) { node.localToWorld(tipV.set(-0.5, 0.95, 0)); node.localToWorld(baseV.set(-0.06, 0.62, 0)); }   // a narrow band along the cutting edge
+  const hitT = atk ? atk.dur * atk.imp / atk.end : 0;
+  const swinging = !flying && P.swing > 0 && atk && !atk.kick && (atk.spin ? el > atk.dur * 0.14 && el < atk.dur * 0.86 : el > hitT - 0.2 && el < hitT + 0.15);
+  const node = flying ? flyIn.children[0] : pencil.children[0];
+  if ((flying || swinging) && node) { if (flying) { node.localToWorld(tipV.set(0, 0.6, 0)); node.localToWorld(baseV.set(0, 0.36, 0)); } else { node.localToWorld(tipV.set(0, -0.33, 0)); node.localToWorld(baseV.set(0, -0.13, 0)); } }   // the pencil's lead draws the line
   trail.update(flying || swinging, tipV, baseV, dt);
 }
 let bossSeen = null;
@@ -925,7 +1080,7 @@ function updateEnemies(dt) {
     const dx = P.x - e.x, dz = P.z - e.z, d = Math.hypot(dx, dz) || 1, hd = Math.hypot(e.x - e.hx, e.z - e.hz), mage = e.kind === 'mage';
     e.stun = Math.max(0, e.stun - dt); e.flash = Math.max(0, e.flash - dt * 5);
     let warn = 0;
-    if (e.state === 'dormant') { if (d < (mage ? 16 : 12.5) && !P.dead) { e.state = 'awaken'; e.t = 0; } }
+    if (e.state === 'dormant') { if (d < (mage ? 16 : 12.5) && !P.dead && !e.site.locked) { e.state = 'awaken'; e.t = 0; } }
     else if (e.state === 'awaken') { e.t += dt; if (e.t >= (e.awake || 1.6)) e.state = 'chase'; }
     else if (e.state === 'taunt') { e.t += dt; if (e.t >= 1.7) e.state = 'chase'; }
     else if (e.state === 'idle') { if (d < 12.5 && !P.dead) e.state = 'chase'; }
@@ -984,7 +1139,7 @@ function updateWave(dt) {
 function updateRunes() {
   for (const r of runes) {
     if (r.got) continue; r.m.rotation.y = time * 1.6; r.m.position.y = 1.1 + Math.sin(time * 2 + r.x) * 0.15;
-    if (Math.hypot(P.x - r.x, P.z - r.z) < 1.4) { r.got = true; r.m.visible = false; save.runes.push(r.tag); addXP(10); chime([1318.5, 1661.2, 1975.5], 0.06, 0.07); burst(r.x, 1.2, r.z, 24, 4, 0.8, 1, 0.8, 0.4, 2); toast('기술 룬 · ' + r.tag, save.runes.length + ' / ' + ALL_TAGS.length, 2.2); }
+    if (Math.hypot(P.x - r.x, P.z - r.z) < 1.4) { r.got = true; r.m.visible = false; save.runes.push(r.tag); addXP(25); chime([1318.5, 1661.2, 1975.5], 0.06, 0.07); burst(r.x, 1.2, r.z, 24, 4, 0.8, 1, 0.8, 0.4, 2); const jn = PROFILE.journey && PROFILE.journey.find(j => j.tag === r.tag); toast('기술 룬 · ' + r.tag, (jn && jn.when ? jn.when + ' · ' : '') + save.runes.length + ' / ' + ALL_TAGS.length, 2.6); }
   }
 }
 let nearSite = null;
@@ -1017,7 +1172,7 @@ function updateCamera(dt) {
   const tall = camera.aspect < 0.9, cd = tall ? 6.4 : 4.6, cs = tall ? 0.4 : 0.85, fk = REDUCED ? 1 : 1 - Math.exp(-13 * dt);
   camF.x += (P.x - camF.x) * fk; camF.z += (P.z - camF.z) * fk;
   camera.position.set(camF.x + right.x * cs - tmp.x * cd, Math.max(0.5, 1.75 - tmp.y * cd), camF.z + right.z * cs - tmp.z * cd);
-  // keep the camera out of the big solid pieces (crypt, coffin, pillars)
+  // keep the camera out of the big solid pieces (halls, pedestals)
   for (const b of obstacles) { if (b.r < 0.75) continue; const ox = camera.position.x - b.x, oz = camera.position.z - b.z, od = Math.hypot(ox, oz), m = b.r + 0.5; if (od < m && od > 0.001 && camera.position.y < 4.5) { camera.position.x = b.x + ox / od * m; camera.position.z = b.z + oz / od * m; } }
   if (shake > 0 && !REDUCED) { shake = Math.max(0, shake - dt * 1.6); camera.position.x += (Math.random() - 0.5) * shake * 0.35; camera.position.y += (Math.random() - 0.5) * shake * 0.35; }
   tmp2.copy(camera.position).add(tmp); camera.lookAt(tmp2);
@@ -1038,7 +1193,7 @@ addEventListener('resize', resize); if (window.ResizeObserver) new ResizeObserve
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
-  const real = Math.min(0.05, (now - last) / 1000); last = now; let dt = real; time += real;
+  const real = Math.min(0.05, (now - last) / 1000) * (window.__slow || 1); last = now; let dt = real; time += real;   // __slow: frame-by-frame inspection while testing
   if (!ready) { camera.position.set(6, 3, 8); camera.lookAt(0, 1.5, 0); renderer.render(scene, camera); return; }
   if (state === 'play') {
     save.time = (save.time || 0) + real;
@@ -1052,6 +1207,7 @@ function frame(now) {
     const a = REDUCED ? 0 : Math.sin(time * 0.12) * 0.35; camera.position.set(3.1 + a, 1.55, 7.2 - a * 0.6); camera.lookAt(-1.7, 1.15, 0.4);
   }
   hero.mixer.update(dt);
+  if (hero.chest && Math.abs(P.chestTw) > 0.001) hero.chest.quaternion.premultiply(qTw.setFromAxisAngle(UP, P.chestTw));   // shoulders lead the hips
   if (state !== 'play') for (const e of enemies) if (!e.dead || e.a.root.visible) e.a.mixer.update(state === 'cine' ? dt : 0);
   // ambient: embers, leaves, breathing lights, drifting ribbon
   for (let i = 0; i < 2; i++) if (Math.random() < 0.7) spark((Math.random() - 0.5) * 0.9, 0.4, (Math.random() - 0.5) * 0.9, (Math.random() - 0.5) * 0.6, 1.4 + Math.random() * 2.2, (Math.random() - 0.5) * 0.6, 1.5, 1, 0.4 + Math.random() * 0.3, 0.08, -0.4);
@@ -1059,6 +1215,7 @@ function frame(now) {
   flames.forEach((f, i) => { const k = 0.8 + Math.sin(time * (7 + i * 3.1) + i) * 0.2; f.scale.set(f.userData.s * k, f.userData.s * (1.5 + Math.sin(time * (9 + i * 2.3)) * 0.3), 1); });
   moon.position.set(P.x - 30, 50, P.z - 20); moon.target.position.set(P.x, 0, P.z);
   auroraTex.offset.x += real * 0.004;
+  occU.uOccR.value = state === 'play' ? 1.7 : 0; occU.uOccP.value.set(P.x, 1.1, P.z);
   ambientSound(real);
   updateParticles(dt); updateLeaves(real);
   if (composer) composer.render(); else renderer.render(scene, camera);
@@ -1070,7 +1227,7 @@ function startGame() {
   state = 'play'; refreshQuest(); initAudio(); startBlend(2); camF.set(P.x, 0, P.z);
   hero.play('Sit_Floor_StandUp', { once: true, fade: 0.1 }); P.lock = (CLIPS.Sit_Floor_StandUp ? CLIPS.Sit_Floor_StandUp.duration : 1) * 0.9;
   setTimeout(() => $('#keys').classList.add('dim'), 20000);
-  toast(save.opened.length ? '여정을 이어간다' : '푸른 빛기둥을 따라가라', TOUCH ? '왼쪽을 끌어 이동, 오른쪽을 끌어 둘러보기' : '클릭 베기 · 우클릭 던지기 · Space 대시', 5.5);
+  toast(save.opened.length ? '여정을 이어간다' : '푸른 빛기둥을 따라가라', TOUCH ? '왼쪽을 끌어 이동, 오른쪽을 끌어 둘러보기' : '클릭으로 연필을 긋고, Space로 대시합니다', 5.5);
 }
 $('#btnStart').onclick = startGame;
 
@@ -1084,4 +1241,4 @@ Promise.all([...MODELS.map(loadModel), ...SOUNDS.map(loadSound)]).then(() => {
   console.error(err); failed = true;
   $('#btnStart').textContent = '불러오지 못했습니다'; $('#tLead').textContent = '에셋을 불러오지 못했습니다. 새로고침하거나 "게임 없이 바로 보기"를 눌러 주세요. (' + String(err && err.message || err).slice(0, 120) + ')';
 });
-window.__saga = { T, get hero() { return hero; }, get handAxe() { return handAxe; }, set yaw(v) { yaw = v; }, set pitch(v) { pitch = v; }, CLIPS, P, G, enemies, sites, runes, bolts, wave, save, get state() { return state; }, get ready() { return ready; }, throwAxe, slash, nova, openPanel, hitEnemy };
+window.__saga = { T, obstacles, get hero() { return hero; }, get handAxe() { return pencil; }, set yaw(v) { yaw = v; }, set pitch(v) { pitch = v; }, CLIPS, P, G, enemies, sites, runes, bolts, wave, save, get state() { return state; }, get ready() { return ready; }, throwAxe, slash, nova, openPanel, hitEnemy };

@@ -140,6 +140,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .jnav { display: flex; flex-wrap: wrap; gap: 8px; }
 .jnav button { background: none; border: 1px solid var(--line); padding: 5px 14px; font-family: var(--saga); font-size: 14px; }
 .jnav button:hover { border-color: var(--ember); color: var(--ember); }
+#quest li.locked { opacity: .45; } #quest li.locked::before { content: "✕ "; color: var(--bone-dim); }
+.dmg.step { font-family: var(--saga); font-size: 15px; font-weight: 400; letter-spacing: .08em; color: var(--gold); animation-duration: .9s; }
+.journey { margin: 0; padding: 0; list-style: none; counter-reset: jr; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 18px; }
+.journey li { counter-increment: jr; display: flex; gap: 8px; align-items: baseline; color: var(--bone-dim); min-width: 0; }
+.journey li::before { content: counter(jr, decimal-leading-zero); font-family: var(--display); color: var(--line); font-variant-numeric: tabular-nums; }
+.journey li b { font-weight: 500; } .journey li span { font-size: 12.5px; }
+.journey.evo { grid-template-columns: 1fr; } .journey.evo li { flex-wrap: wrap; }
+.journey li.got { color: var(--bone); } .journey li.got::before { color: var(--gold); }
+.inspired { font-size: 13px; color: var(--bone-dim); border-top: 1px solid var(--line); padding-top: 14px; }
 #keys { transition: opacity 1.5s; } #keys.dim { opacity: .28; }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .tags li { border: 1px solid var(--line); padding: 1px 9px; font-size: 12.5px; color: var(--bone-dim); }
@@ -190,11 +199,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
       <div class="bar rage" id="rageWrap"><i id="rageBar"></i></div>
       <div class="bar xp"><i id="xpBar"></i></div>
     </div>
-    <div id="keys">
-      <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> 이동 · <kbd>Shift</kbd> 질주</span>
-      <span><kbd>클릭</kbd> 베기(3연타) · <kbd>우클릭</kbd>/<kbd>Q</kbd> 도끼 던지기·회수</span>
-      <span><kbd>Space</kbd> 대시 · <kbd>R</kbd> 불씨 폭발 · <kbd>E</kbd> 조사 · <kbd>J</kbd> 일지</span>
-    </div>
+    <div id="keys"></div>
     <div id="cross"></div>
     <div id="prompt" hidden><span class="ring" id="ring">E</span><span id="promptText"></span></div>
     <div id="toast" role="status"></div>
@@ -202,7 +207,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
   <div id="touch" hidden>
     <div id="stick" hidden><i></i></div>
-    <div id="tbtns"><button id="tNova" hidden>폭발</button><button id="tUse" hidden>조사</button><button id="tThrow">던지기</button><button id="tDodge">대시</button><button id="tSlash">베기</button></div>
+    <div id="tbtns"><button id="tNova" hidden>출시</button><button id="tUse" hidden>조사</button><button id="tThrow">던지기</button><button id="tDodge">대시</button><button id="tSlash">긋기</button></div>
   </div>
 
   <div class="lb t"></div><div class="lb b"></div>
