@@ -89,7 +89,6 @@ function openJournal(all) {
     `<section class="realm-block"><span class="label">성장 · 레벨 ${ready ? lvl() : 1}</span><ol class="journey evo">${EVO.map(v => `<li class="${ready && has(v.lv) ? 'got' : ''}"><b>${esc(v.name)}</b><span>Lv ${v.lv} · ${esc(v.d)}</span></li>`).join('')}</ol></section>` +
     `<p class="inspired">이 페이지의 아이디어와 연출은 God of War(2018)와 God of War Ragnarök에서 영감을 받았습니다. 캐릭터, 세계, 에셋은 그와 별개로 만든 것입니다.</p>` + creditsHTML +
     `<div class="foot"><small>깨운 기록 ${n} / ${total} · 기술 룬 ${save.runes.length} / ${ALL_TAGS.length}</small><span style="display:flex;gap:10px;flex-wrap:wrap">` +
-    (save.opened.length || save.xp ? `<button class="btn ghost" data-reset>처음부터 다시</button>` : '') +
     (revealAll || n === total ? '' : `<button class="btn ghost" id="jAll">전부 펼쳐 보기</button>`) +
     `<button class="btn" id="jClose">${returnState === 'play' ? '여정으로 돌아가기' : (noGL || !ready ? '닫기' : '여정 시작')}</button></span></div>`;
   $('#journal').hidden = false; $('#title').hidden = true;
@@ -112,10 +111,16 @@ function wireReset() {
     b.onclick = () => {
       if (b.dataset.armed) { try { localStorage.removeItem('emberfall-v2'); } catch (e) {} save.opened = []; save.runes = []; save.xp = 0; location.reload(); return; }
       b.dataset.armed = '1'; b.textContent = '한 번 더 누르면 기록, 룬, 레벨이 모두 지워집니다'; b.style.borderColor = 'var(--blood)';
-      setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = '처음부터 다시'; b.style.borderColor = ''; } }, 4500);
+      setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = '처음부터 다시'; b.style.borderColor = ''; } }, 6000);
     };
   });
 }
+// settings: sound, key hints, restart
+function toggleSettings(open) { const m = $('#settings'), b = $('#btnSettings'); const on = open === undefined ? m.hidden : open; m.hidden = !on; b.setAttribute('aria-expanded', String(on)); if (on && document.pointerLockElement) document.exitPointerLock(); }
+$('#btnSettings').onclick = e => { e.stopPropagation(); toggleSettings(); };
+$('#settings').addEventListener('click', e => e.stopPropagation());
+addEventListener('click', () => { if (!$('#settings').hidden) toggleSettings(false); });
+$('#btnKeys').onclick = () => { const k = $('#keys'); k.classList.remove('dim'); toggleSettings(false); setTimeout(() => k.classList.add('dim'), 15000); };
 $('#btnSkip').onclick = () => openJournal(true);
 $('#btnJournal').onclick = () => openJournal(false);
 // shareable links: #about, #skills, #projects, #contact, #journal open the reading view directly
@@ -980,7 +985,7 @@ function showEnding() {
   hero.play('Cheering');
   $('#panelSheet').innerHTML = `<header><div><span class="label">${esc(PROFILE.name)} · ${esc(PROFILE.role)}</span><h2>사가 완성</h2></div></header><p>네 개의 기록을 모두 깨웠습니다. 여기까지 와 주셔서 고맙습니다.</p>` +
     `<dl class="stats"><div><dt>걸린 시간</dt><dd>${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}</dd></div><div><dt>쓰러뜨린 수호자</dt><dd>${save.kills || 0}</dd></div><div><dt>기술 룬</dt><dd>${save.runes.length} / ${ALL_TAGS.length}</dd></div></dl>` +
-    (c ? blocksHTML(c.blocks) : '') + `<div class="foot"><span style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn ghost" id="eJournal">일지 전체 보기</button><button class="btn ghost" data-reset>처음부터 다시</button></span><button class="btn" id="pClose">계속 탐험하기</button></div>`;
+    (c ? blocksHTML(c.blocks) : '') + `<div class="foot"><button class="btn ghost" id="eJournal">일지 전체 보기</button><button class="btn" id="pClose">계속 탐험하기</button></div>`;
   $('#panel').hidden = false; $('#panel').scrollTop = 0;
   wireReset();
   $('#pClose').onclick = closePanel; $('#eJournal').onclick = () => { $('#panel').hidden = true; state = 'play'; openJournal(true); };
@@ -1292,7 +1297,7 @@ Promise.all([...MODELS.map(loadModel), ...SOUNDS.map(loadSound)]).then(() => {
   buildWorld(); buildActors(); buildHud(); refreshQuest();
   ready = true;
   const b = $('#btnStart'); b.disabled = false; b.textContent = save.opened.length ? '여정 이어가기' : '여정 시작';
-  $('#btnReset').hidden = !(save.opened.length || save.xp); wireReset();
+  wireReset();
   hashRoute();
 }).catch(err => {
   console.error(err); failed = true;

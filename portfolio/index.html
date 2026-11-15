@@ -65,6 +65,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 #quest li.done::before { content: "◆ "; color: var(--ember); }
 
 #topbtns { top: 14px; right: var(--gr); display: flex; gap: 8px; pointer-events: auto; }
+#settings { position: absolute; top: calc(100% + 8px); right: 0; display: grid; gap: 6px; min-width: 210px; padding: 8px; background: var(--slab); border: 1px solid var(--line); }
+#settings .chip { text-align: left; background: none; }
 .chip { background: var(--slab); border: 1px solid var(--line); padding: 6px 12px; font-family: var(--saga); font-size: 14.5px; }
 .chip:hover { border-color: var(--ember); }
 
@@ -194,7 +196,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
     <div id="compass" aria-hidden="true"></div>
     <div id="boss" hidden><span class="label">묘지기 해골왕</span><div class="bar frost"><i id="bossBar"></i></div></div>
     <div id="quest"><span class="label">여정</span><h2 id="questHead">기록 깨우기 0 / 4</h2><ul id="questList"></ul><span class="label" id="questRunes"></span></div>
-    <div id="topbtns"><button class="chip" id="btnJournal">일지 <span aria-hidden="true">J</span></button><button class="chip" id="btnSound" aria-pressed="true">소리 켬</button></div>
+    <div id="topbtns"><button class="chip" id="btnJournal">일지 <span aria-hidden="true">J</span></button><button class="chip" id="btnSettings" aria-haspopup="true" aria-expanded="false">설정</button>
+      <div id="settings" hidden>
+        <button class="chip" id="btnSound" aria-pressed="true">소리 켬</button>
+        <button class="chip" id="btnKeys">조작 안내 다시 보기</button>
+        <button class="chip" data-reset>처음부터 다시</button>
+      </div></div>
     <div id="vitals">
       <div class="who"><b id="whoName"></b><span class="label" id="lvl">Lv 1</span></div>
       <div class="bar"><i id="hpBar"></i></div>
@@ -223,7 +230,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
       <div class="acts">
         <button class="btn" id="btnStart" disabled>불러오는 중 0%</button>
         <button class="btn ghost" id="btnSkip">게임 없이 바로 보기</button>
-        <button class="btn ghost" id="btnReset" data-reset hidden>처음부터 다시</button>
       </div>
     </div>
   </div>
