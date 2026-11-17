@@ -509,6 +509,55 @@ class Actor {
   tint(color, k) { for (const m of this.mats) { m.emissive.copy(color); m.emissiveIntensity = k; } }
 }
 
+/* ---------- the hero's look: recolour hair and clothes on the model's palette, add glasses ---------- */
+const lin = c => Math.pow((c / 255 + 0.055) / 1.055, 2.4);
+function applyLook(actor, srcName) {
+  const look = PROFILE.look || {}; let tex = null;
+  M[srcName].traverse(o => { if (o.isMesh && o.material.map && !tex) tex = o.material.map; });
+  if (!tex || !tex.image) return;
+  let data, W, H;
+  try { const cv = document.createElement('canvas'); W = cv.width = tex.image.width; H = cv.height = tex.image.height; const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(tex.image, 0, 0); data = cx.getImageData(0, 0, W, H).data; } catch (e) { return; }
+  const kind = (r, g, b, head) => (r > 200 && r - g > 45 ? 'skin' : r > 200 && r - g <= 45 && g > 170 ? 'cloth' : head && r > g * 1.4 && r < 200 && r > 90 ? 'hair' : b > r * 1.8 ? 'blue' : Math.abs(r - g) < 26 && Math.abs(g - b) < 26 && r > 80 && r < 190 ? 'grey' : 'keep');
+  const at = (uv, i, flip) => { const u = uv.getX(i), v = uv.getY(i), x = Math.min(W - 1, Math.floor((u - Math.floor(u)) * W)), vv = v - Math.floor(v), y = Math.min(H - 1, Math.floor((flip ? 1 - vv : vv) * H)); return (y * W + x) * 4; };
+  // the image may arrive either way up; the head tells us which (it is nearly all hair and skin)
+  let flip = false;
+  actor.root.traverse(o => { if (!o.isMesh || !/Head/.test(o.name)) return; const uv = o.geometry.attributes.uv; let a = 0, b = 0; for (let i = 0; i < uv.count; i++) { let k = at(uv, i, false); if (kind(data[k], data[k + 1], data[k + 2], true) !== 'keep') a++; k = at(uv, i, true); if (kind(data[k], data[k + 1], data[k + 2], true) !== 'keep') b++; } flip = b > a; });
+  const lum = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b, black = look.outfit === 'black';
+  const hair = new T.Color(look.hair || '#995843'), skin = new T.Color('#f4b38c');
+  // each family is moved to its new colour while keeping the model's own light-and-dark shading
+  const FAM = { hair: [hair, 0.12], beard: [skin, 0.12], cloth: [new T.Color('#2b2c33'), 0.64], grey: [new T.Color('#141519'), 0.25], blue: [new T.Color('#17181c'), 0.26] };
+  actor.root.traverse(o => {
+    if (!o.isMesh) return; const uv = o.geometry.attributes.uv, pos = o.geometry.attributes.position; if (!uv) return;
+    const head = /Head/.test(o.name), col = new Float32Array(uv.count * 3).fill(1);
+    for (let i = 0; i < uv.count; i++) {
+      const k = at(uv, i, flip), j = i * 3; let t = kind(data[k], data[k + 1], data[k + 2], head);
+      if (t === 'hair' && !look.beard && pos.getY(i) < 1.6 && pos.getZ(i) > 0.27) t = 'beard';   // the model's moustache and goatee, painted out unless asked for
+      const f = FAM[t]; if (!f || (!black && t !== 'hair' && t !== 'beard')) continue;
+      const r = lin(data[k]), g = lin(data[k + 1]), b = lin(data[k + 2]), sh = clamp(lum(r, g, b) / f[1], 0.6, 1.5);
+      col[j] = f[0].r * sh / Math.max(0.004, r); col[j + 1] = f[0].g * sh / Math.max(0.004, g); col[j + 2] = f[0].b * sh / Math.max(0.004, b);
+    }
+    o.geometry.setAttribute('color', new T.BufferAttribute(col, 3)); o.material.vertexColors = true; o.material.needsUpdate = true;
+  });
+  if (look.glasses && look.glasses !== 'none' && actor.head) addGlasses(actor, look.glasses === 'round');
+}
+function addGlasses(actor, round) {
+  // eye centres measured on the model: (+-0.192, 1.632) at the face, in the model's own units
+  const pivot = actor.root.getObjectByName('Pivot') || actor.root; actor.root.updateMatrixWorld(true);
+  const g = new T.Group(), frame = new T.MeshStandardMaterial({ color: 0x15151a, roughness: 0.35, metalness: 0.3 }), lens = new T.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.16, depthWrite: false });
+  const bar = (w, h, d, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), frame); m.position.set(x, y, z); m.castShadow = SHADOWS; g.add(m); };
+  const EX = 0.192, LW = 0.3, LH = 0.21, TH = 0.034, D = 0.03;
+  [-1, 1].forEach(sd => {
+    const cx = sd * EX;
+    if (round) { const r = new T.Mesh(new T.TorusGeometry(LH * 0.62, TH * 0.5, 6, 20), frame); r.position.set(cx, 0, 0); g.add(r); const l = new T.Mesh(new T.CircleGeometry(LH * 0.6, 20), lens); l.position.set(cx, 0, 0); g.add(l); }
+    else { bar(LW, TH, D, cx, LH / 2, 0); bar(LW, TH, D, cx, -LH / 2, 0); bar(TH, LH + TH, D, cx - LW / 2, 0, 0); bar(TH, LH + TH, D, cx + LW / 2, 0, 0); const l = new T.Mesh(new T.PlaneGeometry(LW, LH), lens); l.position.set(cx, 0, 0); g.add(l); }
+    bar(TH * 0.8, TH * 0.8, 0.5, sd * (EX + LW / 2 + 0.05), LH * 0.25, -0.25);   // temples run back to the ears
+    bar(0.07, TH * 0.8, D, sd * (EX + LW / 2 + 0.025), LH * 0.25, 0);
+  });
+  bar(EX * 2 - LW + 0.01, TH, D, 0, LH * 0.2, 0);   // bridge
+  // place it in front of the eyes in the bind pose, then hand it to the head bone so it follows every animation
+  const wp = pivot.localToWorld(new T.Vector3(0, 1.632, 0.5)), wq = pivot.getWorldQuaternion(new T.Quaternion()), ws = pivot.getWorldScale(new T.Vector3());
+  g.position.copy(wp); g.quaternion.copy(wq); g.scale.copy(ws); scene.add(g); g.updateMatrixWorld(true); actor.head.attach(g);
+}
 const P = { x: 0, z: 2.9, face: 0, hp: 100, inv: 0, dodge: 0, dx: 0, dz: 0, cd: 0, lock: 0, dead: false, healed: false, rage: 0, raged: false, combo: 0, comboT: 0, swing: 0, swingDur: 1, hitDone: true, queued: false, yawB: Math.PI, tw: 0, pitchB: 0, chestTw: 0, tool: 'pencil', swapT: 0, swapTo: '', swapThen: null, swapArg: false, lunge: 0, lungeSp: 7, throwT: 0, step: 0, moving: false, sprint: false, atk: null, whooshed: true, idleT: 0, beat: 0 };
 let hero = null, pencil = null, pencilBack = null, handSquare = null, handSq = null, pxP = null, pxS = null, fly = null, flyIn = null, trail = null;
 const SWAP = 0.3, swA = new T.Vector3(), swB = new T.Vector3(), swQa = new T.Quaternion(), swQb = new T.Quaternion();
@@ -542,6 +591,7 @@ function makeEnemy(site, ox, oz, kind, risen) {
 
 function buildActors() {
   hero = new Actor('Ranger', 1, true);
+  applyLook(hero, 'Ranger');
   // the pencil: drawn with, and fought with. Point outwards, held near the eraser.
   pencil = M.pencil_B_long.clone(); pencil.traverse(c => { if (c.isMesh) c.castShadow = SHADOWS; });
   if (pencil.children[0]) pencil.children[0].position.set(0, 0, 0);
