@@ -7,8 +7,10 @@ export const PROFILE = {
   name: 'KIKI',
   role: 'AI Native Designer',
   lead: '연필 한 자루로 시작해 삼각자를 얻고, 끝내 만든 것을 세상에 내놓기까지. 모닥불에서 일어나 길을 하나씩 열며 제 기록을 깨워 보세요.',
-  /* 주인공의 생김새. hair: 머리 색, outfit: 'black' 또는 'original', glasses: 'square' | 'round' | 'none', beard: 콧수염과 턱수염을 남길지 */
-  look: { hair: '#3b2a22', outfit: 'black', glasses: 'square', beard: false },
+  /* 주인공의 생김새.
+     hair: 머리 색 · fringe: 가운데서 갈라지는 볼륨 있는 앞머리 · glasses: 'wire'(얇은 금속 둥근테) | 'square' | 'round' | 'none'
+     outfit: 'black' | 'original' · beard: 수염 · watch: 왼손목 시계 */
+  look: { hair: '#241d1a', fringe: true, glasses: 'wire', outfit: 'black', beard: false, watch: true },
   /* 배움의 순서: 학교를 다니며 익힌 순서대로 적습니다. 이 순서대로 길 위에 "기술 룬"이 놓이고 일지에 번호가 붙습니다.
      when 은 선택 사항입니다(예: '1학년', '2023'). 지금 순서는 임시이니 실제 순서로 바꿔 주세요. */
   journey: [

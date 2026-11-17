@@ -531,32 +531,66 @@ function applyLook(actor, srcName) {
     const head = /Head/.test(o.name), col = new Float32Array(uv.count * 3).fill(1);
     for (let i = 0; i < uv.count; i++) {
       const k = at(uv, i, flip), j = i * 3; let t = kind(data[k], data[k + 1], data[k + 2], head);
-      if (t === 'hair' && !look.beard && pos.getY(i) < 1.6 && pos.getZ(i) > 0.27) t = 'beard';   // the model's moustache and goatee, painted out unless asked for
+      if (t === 'hair' && !look.beard && pos.getY(i) < 1.6 && pos.getZ(i) > 0.27) {   // the model's moustache and goatee: painted out and pressed back into the face unless asked for
+        t = 'beard'; const dx = pos.getX(i), dy = pos.getY(i) - 1.72, dz = pos.getZ(i), d = Math.hypot(dx, dy, dz), R = 0.5;
+        if (d > R) pos.setXYZ(i, dx * R / d, 1.72 + dy * R / d, dz * R / d);
+      }
       const f = FAM[t]; if (!f || (!black && t !== 'hair' && t !== 'beard')) continue;
       const r = lin(data[k]), g = lin(data[k + 1]), b = lin(data[k + 2]), sh = clamp(lum(r, g, b) / f[1], 0.6, 1.5);
       col[j] = f[0].r * sh / Math.max(0.004, r); col[j + 1] = f[0].g * sh / Math.max(0.004, g); col[j + 2] = f[0].b * sh / Math.max(0.004, b);
     }
-    o.geometry.setAttribute('color', new T.BufferAttribute(col, 3)); o.material.vertexColors = true; o.material.needsUpdate = true;
+    o.geometry.setAttribute('color', new T.BufferAttribute(col, 3)); o.material.vertexColors = true; o.material.needsUpdate = true; if (head) { pos.needsUpdate = true; o.geometry.computeVertexNormals(); }
   });
-  if (look.glasses && look.glasses !== 'none' && actor.head) addGlasses(actor, look.glasses === 'round');
+  if (look.glasses && look.glasses !== 'none' && actor.head) addGlasses(actor, look.glasses);
+  if (look.fringe && actor.head) addHair(actor, hair);
+  if (look.watch) addWatch(actor);
 }
-function addGlasses(actor, round) {
-  // eye centres measured on the model: (+-0.192, 1.632) at the face, in the model's own units
+// build a piece in the model's own units (bind pose), then hand it to a bone so it follows every animation
+function onBone(actor, bone, g) {
   const pivot = actor.root.getObjectByName('Pivot') || actor.root; actor.root.updateMatrixWorld(true);
-  const g = new T.Group(), frame = new T.MeshStandardMaterial({ color: 0x15151a, roughness: 0.35, metalness: 0.3 }), lens = new T.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: 0.16, depthWrite: false });
-  const bar = (w, h, d, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), frame); m.position.set(x, y, z); m.castShadow = SHADOWS; g.add(m); };
-  const EX = 0.192, LW = 0.3, LH = 0.21, TH = 0.034, D = 0.03;
+  pivot.getWorldPosition(g.position); pivot.getWorldQuaternion(g.quaternion); pivot.getWorldScale(g.scale);
+  scene.add(g); g.updateMatrixWorld(true); bone.attach(g);
+}
+function addGlasses(actor, style) {
+  // eye centres measured on the model: (+-0.192, 1.632) at the face
+  const wire = style === 'wire', round = wire || style === 'round', g = new T.Group();
+  const frame = new T.MeshStandardMaterial(wire ? { color: 0xa9afb8, roughness: 0.28, metalness: 0.85 } : { color: 0x15151a, roughness: 0.35, metalness: 0.3 });
+  const lens = new T.MeshBasicMaterial({ color: 0xbfe0ff, transparent: true, opacity: wire ? 0.1 : 0.16, depthWrite: false });
+  const TH = wire ? 0.016 : 0.034, D = wire ? 0.016 : 0.03, EX = 0.2, LW = wire ? 0.33 : 0.3, LH = wire ? 0.27 : 0.21, Y = 1.625, Z = 0.5;
+  const bar = (w, h, d, x, y, z) => { const m = new T.Mesh(new T.BoxGeometry(w, h, d), frame); m.position.set(x, Y + y, Z + z); m.castShadow = SHADOWS; g.add(m); };
   [-1, 1].forEach(sd => {
     const cx = sd * EX;
-    if (round) { const r = new T.Mesh(new T.TorusGeometry(LH * 0.62, TH * 0.5, 6, 20), frame); r.position.set(cx, 0, 0); g.add(r); const l = new T.Mesh(new T.CircleGeometry(LH * 0.6, 20), lens); l.position.set(cx, 0, 0); g.add(l); }
-    else { bar(LW, TH, D, cx, LH / 2, 0); bar(LW, TH, D, cx, -LH / 2, 0); bar(TH, LH + TH, D, cx - LW / 2, 0, 0); bar(TH, LH + TH, D, cx + LW / 2, 0, 0); const l = new T.Mesh(new T.PlaneGeometry(LW, LH), lens); l.position.set(cx, 0, 0); g.add(l); }
-    bar(TH * 0.8, TH * 0.8, 0.5, sd * (EX + LW / 2 + 0.05), LH * 0.25, -0.25);   // temples run back to the ears
-    bar(0.07, TH * 0.8, D, sd * (EX + LW / 2 + 0.025), LH * 0.25, 0);
+    if (round) {   // a slightly wide, soft-cornered rim, as thin wire frames are
+      const r = new T.Mesh(new T.TorusGeometry(LH / 2, TH / 2, 6, 28), frame); r.scale.set(LW / LH, 1, 1); r.position.set(cx, Y, Z); r.castShadow = SHADOWS; g.add(r);
+      const l = new T.Mesh(new T.CircleGeometry(LH / 2, 24), lens); l.scale.set(LW / LH, 1, 1); l.position.set(cx, Y, Z); g.add(l);
+    } else { bar(LW, TH, D, cx, LH / 2, 0); bar(LW, TH, D, cx, -LH / 2, 0); bar(TH, LH + TH, D, cx - LW / 2, 0, 0); bar(TH, LH + TH, D, cx + LW / 2, 0, 0); const l = new T.Mesh(new T.PlaneGeometry(LW, LH), lens); l.position.set(cx, Y, Z); g.add(l); }
+    bar(TH * 0.8, TH * 0.8, 0.52, sd * (EX + LW / 2 + 0.06), LH * 0.2, -0.26);   // temples run back to the ears
+    bar(0.075, TH * 0.8, D, sd * (EX + LW / 2 + 0.03), LH * 0.2, 0);
   });
-  bar(EX * 2 - LW + 0.01, TH, D, 0, LH * 0.2, 0);   // bridge
-  // place it in front of the eyes in the bind pose, then hand it to the head bone so it follows every animation
-  const wp = pivot.localToWorld(new T.Vector3(0, 1.632, 0.5)), wq = pivot.getWorldQuaternion(new T.Quaternion()), ws = pivot.getWorldScale(new T.Vector3());
-  g.position.copy(wp); g.quaternion.copy(wq); g.scale.copy(ws); scene.add(g); g.updateMatrixWorld(true); actor.head.attach(g);
+  bar(EX * 2 - LW + 0.02, TH, D, 0, LH * 0.16, 0);   // bridge
+  onBone(actor, actor.head, g);
+}
+// volume on top and a fringe that parts in the middle and falls to either side
+function addHair(actor, color) {
+  const g = new T.Group(), mat = new T.MeshStandardMaterial({ color, roughness: 1, flatShading: true }), geo = new T.IcosahedronGeometry(1, 1);
+  const lump = (x, y, z, sx, sy, sz, rz, rx) => { const m = new T.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); m.rotation.set(rx || 0, 0, rz || 0); m.castShadow = SHADOWS; g.add(m); };
+  lump(0, 2.17, -0.02, 0.5, 0.17, 0.48);               // crown volume
+  lump(0, 2.2, 0.22, 0.36, 0.14, 0.28, 0, -0.3);       // lift at the front
+  [-1, 1].forEach(sd => {
+    lump(sd * 0.23, 2.06, 0.47, 0.25, 0.115, 0.12, sd * -0.6, 0.2);   // curtain, sweeping down and out from the parting
+    lump(sd * 0.42, 1.95, 0.4, 0.11, 0.15, 0.11, sd * -0.25);         // where it meets the temple
+  });
+  onBone(actor, actor.head, g);
+}
+function addWatch(actor) {
+  let wrist = null, hand = null; actor.root.traverse(o => { if (/^wrist\.?l$/.test(o.name)) wrist = o; if (/^hand\.?l$/.test(o.name)) hand = o; });
+  if (!wrist || !hand) return; actor.root.updateMatrixWorld(true);
+  const a = wrist.getWorldPosition(new T.Vector3()), b = hand.getWorldPosition(new T.Vector3()), axis = b.clone().sub(a); if (axis.lengthSq() < 1e-6) return; axis.normalize();
+  const g = new T.Group(), steel = new T.MeshStandardMaterial({ color: 0xc9ced6, roughness: 0.25, metalness: 0.9 });
+  const band = new T.Mesh(new T.TorusGeometry(0.078, 0.02, 6, 18), steel); g.add(band);
+  const face = new T.Mesh(new T.CylinderGeometry(0.05, 0.05, 0.03, 14), steel); face.position.set(0, 0.085, 0); g.add(face);
+  const dial = new T.Mesh(new T.CylinderGeometry(0.038, 0.038, 0.032, 14), new T.MeshStandardMaterial({ color: 0x111317, roughness: 0.4 })); dial.position.set(0, 0.087, 0); g.add(dial);
+  g.quaternion.setFromUnitVectors(new T.Vector3(0, 0, 1), axis); g.position.copy(a).addScaledVector(axis, -0.02); scene.add(g); g.updateMatrixWorld(true); wrist.attach(g);
 }
 const P = { x: 0, z: 2.9, face: 0, hp: 100, inv: 0, dodge: 0, dx: 0, dz: 0, cd: 0, lock: 0, dead: false, healed: false, rage: 0, raged: false, combo: 0, comboT: 0, swing: 0, swingDur: 1, hitDone: true, queued: false, yawB: Math.PI, tw: 0, pitchB: 0, chestTw: 0, tool: 'pencil', swapT: 0, swapTo: '', swapThen: null, swapArg: false, lunge: 0, lungeSp: 7, throwT: 0, step: 0, moving: false, sprint: false, atk: null, whooshed: true, idleT: 0, beat: 0 };
 let hero = null, pencil = null, pencilBack = null, handSquare = null, handSq = null, pxP = null, pxS = null, fly = null, flyIn = null, trail = null;
